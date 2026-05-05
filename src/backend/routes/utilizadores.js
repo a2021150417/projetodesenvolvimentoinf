@@ -1,134 +1,92 @@
 const express = require("express");
 const router = express.Router();
-const pool = require("../db");
-const bcrypt = require("bcryptjs");
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const pool = require("../db"); // O caminho tem ".." para recuar para a pasta backend
 
-const JWT_SECRET = process.env.JWT_SECRET || "quickpass_secret";
-
-// POST /api/utilizadores/registo — criar conta
+// ==========================================
+// ROTA 1: REGISTO (/api/utilizadores/registo)
+// ==========================================
 router.post("/registo", async (req, res) => {
   try {
     const { nome, email, password } = req.body;
 
-    // Verificar se o email já existe
-    const existe = await pool.query(
-      "SELECT id_utilizador FROM Utilizador WHERE email = $1",
-      [email]
-    );
-    if (existe.rows.length > 0) {
-      return res.status(400).json({ erro: "Este email já está registado" });
+    // 1. Verificar se o utilizador já existe na BD
+    const userExiste = await pool.query("SELECT * FROM Utilizador WHERE email = $1", [email]);
+    
+    if (userExiste.rows.length > 0) {
+      return res.status(400).json({ erro: "Este email já está registado." });
     }
 
-    // Encriptar a password
-    const hash = await bcrypt.hash(password, 10);
+    // 2. Encriptar a password para máxima segurança
+    const salt = await bcrypt.genSalt(10);
+    const hashPassword = await bcrypt.hash(password, salt);
 
-    // Criar utilizador
-    const resultado = await pool.query(
-      "INSERT INTO Utilizador (nome, email, password) VALUES ($1, $2, $3) RETURNING id_utilizador, nome, email",
-      [nome, email, hash]
+    // 3. Truque: Se o email for o do admin, dá-lhe poderes! Se não, é utilizador normal.
+    const isAdmin = email === "admin@quickpass.pt";
+
+    // 4. Guardar na Base de Dados
+    const novoUser = await pool.query(
+      "INSERT INTO Utilizador (nome, email, password, is_admin) VALUES ($1, $2, $3, $4) RETURNING id_utilizador, nome, email, is_admin",
+      [nome, email, hashPassword, isAdmin]
     );
 
-    res.status(201).json({ mensagem: "Conta criada com sucesso!", utilizador: resultado.rows[0] });
+    res.status(201).json({ 
+      mensagem: "Conta criada com sucesso!", 
+      utilizador: novoUser.rows[0] 
+    });
+
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    console.error("Erro no registo:", err.message);
+    res.status(500).json({ erro: "Erro interno do servidor." });
   }
 });
 
-// POST /api/utilizadores/login — fazer login
+// ==========================================
+// ROTA 2: LOGIN (/api/utilizadores/login)
+// ==========================================
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Verificar se o utilizador existe
-    const resultado = await pool.query(
-      "SELECT * FROM Utilizador WHERE email = $1",
-      [email]
-    );
+    // 1. Procurar o utilizador pelo email
+    const resultado = await pool.query("SELECT * FROM Utilizador WHERE email = $1", [email]);
+    
     if (resultado.rows.length === 0) {
-      return res.status(401).json({ erro: "Email ou password incorretos" });
+      return res.status(401).json({ erro: "Email ou palavra-passe incorretos." });
     }
 
     const utilizador = resultado.rows[0];
 
-    // Verificar a password
-    const passwordCorreta = await bcrypt.compare(password, utilizador.password);
-    if (!passwordCorreta) {
-      return res.status(401).json({ erro: "Email ou password incorretos" });
+    // 2. Verificar se a password bate certo com a da base de dados
+    const passwordValida = await bcrypt.compare(password, utilizador.password);
+    
+    if (!passwordValida) {
+      return res.status(401).json({ erro: "Email ou palavra-passe incorretos." });
     }
 
-    // Gerar token JWT
+    // 3. Gerar o "bilhete de identidade" (Token)
+    const tokenSecret = process.env.JWT_SECRET || "quickpass_segredo_temporario";
     const token = jwt.sign(
       { id: utilizador.id_utilizador, email: utilizador.email },
-      JWT_SECRET,
-      { expiresIn: "7d" }
+      tokenSecret,
+      { expiresIn: "24h" }
     );
 
+    // 4. Devolver os dados de sucesso ao site
     res.json({
       token,
       utilizador: {
         id_utilizador: utilizador.id_utilizador,
         nome: utilizador.nome,
         email: utilizador.email,
+        is_admin: utilizador.is_admin
       },
     });
-  } catch (err) {
-    res.status(500).json({ erro: err.message });
-  }
-});
 
-// GET /api/utilizadores — listar todos
-router.get("/", async (req, res) => {
-  try {
-    const resultado = await pool.query(
-      "SELECT id_utilizador, nome, email, data_nascimento FROM Utilizador"
-    );
-    res.json(resultado.rows);
   } catch (err) {
-    res.status(500).json({ erro: err.message });
-  }
-});
-
-// GET /api/utilizadores/:id — obter um utilizador
-router.get("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const resultado = await pool.query(
-      "SELECT id_utilizador, nome, email, data_nascimento FROM Utilizador WHERE id_utilizador = $1",
-      [id]
-    );
-    if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: "Utilizador não encontrado" });
-    }
-    res.json(resultado.rows[0]);
-  } catch (err) {
-    res.status(500).json({ erro: err.message });
-  }
-});
-
-// PUT /api/utilizadores/:id — atualizar utilizador
-router.put("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nome, email, data_nascimento } = req.body;
-    const resultado = await pool.query(
-      "UPDATE Utilizador SET nome=$1, email=$2, data_nascimento=$3 WHERE id_utilizador=$4 RETURNING id_utilizador, nome, email",
-      [nome, email, data_nascimento, id]
-    );
-    res.json(resultado.rows[0]);
-  } catch (err) {
-    res.status(500).json({ erro: err.message });
-  }
-});
-
-// DELETE /api/utilizadores/:id — apagar utilizador
-router.delete("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    await pool.query("DELETE FROM Utilizador WHERE id_utilizador = $1", [id]);
-    res.json({ mensagem: "Utilizador apagado com sucesso" });
-  } catch (err) {
-    res.status(500).json({ erro: err.message });
+    console.error("Erro no login:", err.message);
+    res.status(500).json({ erro: "Erro interno do servidor." });
   }
 });
 

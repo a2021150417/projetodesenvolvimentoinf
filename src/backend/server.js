@@ -2,28 +2,32 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
-const utilizadoresRoutes = require("./routes/utilizadores");
-const eventosRoutes = require("./routes/eventos");
-const bilhetesRoutes = require("./routes/bilhetes");
-
 const app = express();
 
 // Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Rotas
-app.use("/api/utilizadores", utilizadoresRoutes);
-app.use("/api/eventos", eventosRoutes);
-app.use("/api/bilhetes", bilhetesRoutes);
+// Servir imagens de perfil
+app.use("/uploads", express.static("uploads"));
+
+// Importar rotas
+const rotasUtilizadores = require("./routes/utilizadores");
+const rotasEventos = require("./routes/eventos");
+const rotasBilhetes = require("./routes/bilhetes");
+
+// Usar rotas
+app.use("/api/utilizadores", rotasUtilizadores);
+app.use("/api/eventos", rotasEventos);
+app.use("/api/bilhetes", rotasBilhetes);
 
 // Rota de teste
 app.get("/", (req, res) => {
-  res.json({ mensagem: "API a funcionar! 🚀" });
+  res.json({ mensagem: "API a funcionar!" });
 });
 
-// Iniciar servidor
+// Arrancar servidor
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor a correr em http://localhost:${PORT}`);
+  console.log("Servidor a correr na porta " + PORT);
 });
