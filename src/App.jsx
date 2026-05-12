@@ -13,6 +13,10 @@ import Checkout from './Checkout';
 import Perfil from './Perfil';
 import HistoricoCompras from './HistoricoCompras';
 import BilhetesAtivos from './BilhetesAtivos';
+import AdminDashboard from './AdminDashboard';
+import LeitorQR from './LeitorQR';
+import RecuperarPassword from './RecuperarPassword';
+import ResetPassword from './ResetPassword';
 
 function App() {
   return (
@@ -27,10 +31,14 @@ function App() {
             <Route path="/eventos/:id" element={<EventDetalhes />} />
             <Route path="/suporte" element={<Suporte />} />
             <Route path="/carrinho" element={<Carrinho />} />
-            <Route path="/checkout/:id" element={<Checkout />} />
+            <Route path="/checkout" element={<Checkout />} />
             <Route path="/perfil" element={<Perfil />} />
             <Route path="/historico" element={<HistoricoCompras />} />
             <Route path="/bilhetes-ativos" element={<BilhetesAtivos />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/leitor-qr" element={<LeitorQR />} />
+            <Route path="/recuperar-password" element={<RecuperarPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
           </Routes>
           <Chatbot />
         </CartProvider>

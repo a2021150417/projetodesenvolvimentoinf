@@ -94,7 +94,7 @@ export default function Eventos() {
   };
 
   useEffect(() => {
-    fetch("http://localhost:3001/api/eventos")
+    fetch(`${import.meta.env.VITE_API_URL}/api/eventos`)
       .then((r) => r.json())
       .then((dados) => {
         // Mapear campos da BD para o formato do frontend

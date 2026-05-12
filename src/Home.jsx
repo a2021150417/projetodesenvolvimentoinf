@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import Navbar from "./Navbar";
+
+function getUserFromToken() {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+    return JSON.parse(atob(token.split(".")[1]));
+  } catch { return null; }
+}
+
 export default function Home() {
   const navigate = useNavigate();
 
@@ -18,9 +27,54 @@ export default function Home() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
 
+  // Estados comentários
+  const [comentarios, setComentarios] = useState([]);
+  const [reviewEstrelas, setReviewEstrelas] = useState(0);
+  const [reviewHover, setReviewHover] = useState(0);
+  const [reviewTexto, setReviewTexto] = useState("");
+  const [reviewNome, setReviewNome] = useState("");
+  const [reviewEnviando, setReviewEnviando] = useState(false);
+  const [reviewSucesso, setReviewSucesso] = useState(false);
+
   // Estados da pesquisa
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+
+  useEffect(() => {
+    fetch("/api/comentarios")
+      .then(r => r.json())
+      .then(dados => setComentarios(Array.isArray(dados) ? dados : []))
+      .catch(() => {});
+  }, []);
+
+  const enviarComentario = async (e) => {
+    e.preventDefault();
+    if (!reviewEstrelas || !reviewTexto.trim()) return;
+    setReviewEnviando(true);
+    const user = getUserFromToken();
+    const nome = reviewNome.trim() || localStorage.getItem("userName") || "Anónimo";
+    try {
+      const res = await fetch("/api/comentarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_utilizador: user?.id || null,
+          nome,
+          comentario: reviewTexto,
+          estrelas: reviewEstrelas,
+        }),
+      });
+      const novo = await res.json();
+      if (res.ok) {
+        setComentarios(prev => [novo, ...prev]);
+        setReviewSucesso(true);
+        setReviewTexto("");
+        setReviewEstrelas(0);
+        setTimeout(() => { setShowReviewModal(false); setReviewSucesso(false); }, 1500);
+      }
+    } catch {}
+    setReviewEnviando(false);
+  };
 
   const nextImage = () => setCurrentBg((prev) => (prev + 1) % bgImages.length);
   const prevImage = () => setCurrentBg((prev) => (prev - 1 + bgImages.length) % bgImages.length);
@@ -251,54 +305,33 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300 flex flex-col">
-              <div className="flex gap-1 text-yellow-400 mb-6">
-                {[...Array(5)].map((_, i) => (
-                  <svg key={i} className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                ))}
-              </div>
-              <p className="text-gray-700 mb-8 leading-relaxed flex-grow text-balance text-sm">"Comprei bilhetes para o festival num instante! O site não bloqueou, o processo foi super intuitivo e o bilhete em QR code no telemóvel funcionou perfeitamente na entrada. Recomendo muito."</p>
-              <div className="flex items-center gap-4 mt-auto">
-                <div className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center font-bold text-xs tracking-widest shadow-sm">MC</div>
-                <div>
-                  <p className="font-bold text-gray-900 text-sm">Mariana Costa</p>
-                  <p className="text-[10px] text-gray-500 flex items-center gap-1 uppercase tracking-wide font-semibold mt-0.5"><svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg> Compra Verificada</p>
+            {comentarios.slice(0, 3).map((c) => (
+              <div key={c.id_comentario} className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300 flex flex-col">
+                <div className="flex gap-1 text-yellow-400 mb-6">
+                  {[...Array(5)].map((_, i) => (
+                    <svg key={i} className={`w-5 h-5 ${i < c.estrelas ? "text-yellow-400" : "text-gray-200"}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  ))}
+                </div>
+                <p className="text-gray-700 mb-8 leading-relaxed flex-grow text-balance text-sm">"{c.comentario}"</p>
+                <div className="flex items-center gap-4 mt-auto">
+                  <div className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center font-bold text-xs shadow-sm">
+                    {c.nome.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm">{c.nome}</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold mt-0.5">
+                      {new Date(c.data_comentario).toLocaleDateString("pt-PT")}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
 
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300 flex flex-col">
-              <div className="flex gap-1 text-yellow-400 mb-6">
-                {[...Array(5)].map((_, i) => (
-                  <svg key={i} className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                ))}
+            {comentarios.length === 0 && (
+              <div className="col-span-3 flex items-center justify-center py-12 text-gray-400 text-sm">
+                Ainda não há comentários. Sê o primeiro!
               </div>
-              <p className="text-gray-700 mb-8 leading-relaxed flex-grow text-balance text-sm">"Farto de sites complicados e bilhetes em papel. A QuickPass veio resolver isso. O design do site é espetacular, muito rápido de navegar, e a carteira digital é brilhante."</p>
-              <div className="flex items-center gap-4 mt-auto">
-                <div className="w-10 h-10 bg-gray-200 text-gray-700 rounded-full flex items-center justify-center font-bold text-xs tracking-widest border-2 border-white shadow-sm">DP</div>
-                <div>
-                  <p className="font-bold text-gray-900 text-sm">Diogo Pereira</p>
-                  <p className="text-[10px] text-gray-500 flex items-center gap-1 uppercase tracking-wide font-semibold mt-0.5"><svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg> Compra Verificada</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-lg hover:shadow-gray-200/50 transition-shadow duration-300 flex flex-col">
-              <div className="flex gap-1 text-yellow-400 mb-6">
-                {[...Array(4)].map((_, i) => (
-                  <svg key={i} className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                ))}
-                <svg className="w-5 h-5 text-gray-200" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-              </div>
-              <p className="text-gray-700 mb-8 leading-relaxed flex-grow text-balance text-sm">"Muito fácil de usar. Só gostava que tivessem mais eventos de teatro na minha zona, mas para concertos e futebol já não uso outra coisa. O apoio ao cliente foi impecável."</p>
-              <div className="flex items-center gap-4 mt-auto">
-                <div className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center font-bold text-xs tracking-widest shadow-sm">AR</div>
-                <div>
-                  <p className="font-bold text-gray-900 text-sm">Ana Rita</p>
-                  <p className="text-[10px] text-gray-500 flex items-center gap-1 uppercase tracking-wide font-semibold mt-0.5"><svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg> Compra Verificada</p>
-                </div>
-              </div>
-            </div>
+            )}
 
             <div className="group bg-transparent p-8 rounded-3xl border-2 border-dashed border-gray-300 hover:border-black hover:bg-white transition-all duration-300 flex flex-col items-center justify-center text-center cursor-pointer">
               <div className="w-16 h-16 bg-gray-100 group-hover:bg-black text-gray-400 group-hover:text-white rounded-full flex items-center justify-center mb-6 transition-colors duration-300 shadow-sm">
@@ -362,21 +395,63 @@ export default function Home() {
             </button>
             <h3 className="text-2xl font-extrabold text-gray-900 mb-2">Avalia a tua experiência</h3>
             <p className="text-gray-500 text-sm mb-8">A tua opinião ajuda-nos a melhorar e ajuda outros utilizadores.</p>
-            <form className="space-y-6">
-              <div>
-                <label className="block text-sm font-bold text-gray-900 mb-3">Classificação</label>
-                <div className="flex gap-2 text-gray-300">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-8 h-8 hover:text-yellow-400 cursor-pointer transition-colors" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                  ))}
+            {reviewSucesso ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
                 </div>
+                <p className="font-bold text-gray-900 text-lg">Obrigado pelo teu comentário!</p>
               </div>
-              <div>
-                <label htmlFor="review" className="block text-sm font-bold text-gray-900 mb-2">O teu comentário</label>
-                <textarea id="review" rows="4" className="w-full p-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-inner resize-none transition-shadow" placeholder="Conta-nos como foi a tua experiência na plataforma..."></textarea>
-              </div>
-              <button type="button" onClick={() => setShowReviewModal(false)} className="w-full bg-black text-white p-4 rounded-full hover:bg-gray-800 font-bold transition shadow-sm mt-4">Enviar Avaliação</button>
-            </form>
+            ) : (
+              <form onSubmit={enviarComentario} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2">O teu nome</label>
+                  <input
+                    type="text"
+                    value={reviewNome}
+                    onChange={(e) => setReviewNome(e.target.value)}
+                    className="w-full p-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-inner transition-shadow"
+                    placeholder={localStorage.getItem("userName") || "O teu nome..."}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-3">Classificação</label>
+                  <div className="flex gap-2">
+                    {[1,2,3,4,5].map((i) => (
+                      <svg
+                        key={i}
+                        className={`w-8 h-8 cursor-pointer transition-colors ${i <= (reviewHover || reviewEstrelas) ? "text-yellow-400" : "text-gray-200"}`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                        onClick={() => setReviewEstrelas(i)}
+                        onMouseEnter={() => setReviewHover(i)}
+                        onMouseLeave={() => setReviewHover(0)}
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                      </svg>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-2">O teu comentário</label>
+                  <textarea
+                    rows="4"
+                    value={reviewTexto}
+                    onChange={(e) => setReviewTexto(e.target.value)}
+                    className="w-full p-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300 shadow-inner resize-none transition-shadow"
+                    placeholder="Conta-nos como foi a tua experiência na plataforma..."
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={reviewEnviando || !reviewEstrelas}
+                  className="w-full bg-black text-white p-4 rounded-full hover:bg-gray-800 font-bold transition shadow-sm mt-4 disabled:opacity-50"
+                >
+                  {reviewEnviando ? "A enviar..." : "Enviar Avaliação"}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}

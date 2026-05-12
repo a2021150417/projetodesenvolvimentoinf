@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db");
-const { enviarBilhete } = require("../email");
 
 // GET /api/bilhetes — listar todos
 router.get("/", async (req, res) => {
@@ -40,7 +39,7 @@ router.get("/utilizador/:id", async (req, res) => {
 router.post("/", async (req, res) => {
   const client = await pool.connect();
   try {
-    const { id_utilizador, id_evento, email, nome } = req.body;
+    const { id_utilizador, id_evento } = req.body;
 
     await client.query("BEGIN");
 
@@ -74,27 +73,6 @@ router.post("/", async (req, res) => {
     );
 
     await client.query("COMMIT");
-
-    // Enviar email com bilhete
-    try {
-      const eventoInfo = await pool.query(
-        "SELECT titulo, data_hora, morada FROM Eventos WHERE id_evento = $1", [id_evento]
-      );
-      if (email && eventoInfo.rows.length > 0) {
-        const e = eventoInfo.rows[0];
-        enviarBilhete({
-          para: email,
-          nome: nome || "Utilizador",
-          evento: e.titulo,
-          data: e.data_hora ? new Date(e.data_hora).toLocaleDateString("pt-PT", { day: "numeric", month: "long", year: "numeric" }) : null,
-          local: e.morada || null,
-          codigoQR: bilhete.rows[0].codigo_qr,
-          preco: null,
-        }).catch(() => {});
-      }
-    } catch {}
-
-
     res.status(201).json(bilhete.rows[0]);
 
   } catch (err) {
@@ -116,7 +94,7 @@ router.put("/:id/usar", async (req, res) => {
     if (resultado.rows.length === 0) {
       return res.status(404).json({ erro: "Bilhete não encontrado" });
     }
-    res.json(resultado.rows[0]);
+    res.json({ mensagem: "Bilhete marcado como usado", bilhete: resultado.rows[0] });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }

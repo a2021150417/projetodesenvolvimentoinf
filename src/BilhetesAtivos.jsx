@@ -26,7 +26,7 @@ export default function BilhetesAtivos() {
   useEffect(() => {
     window.scrollTo(0, 0);
     if (!user) { navigate("/login"); return; }
-    fetch(`http://localhost:3001/api/bilhetes/utilizador/${user.id}`)
+    fetch(`${import.meta.env.VITE_API_URL}/api/bilhetes/utilizador/${user.id}`)
       .then((r) => r.json())
       .then((dados) => {
         const ativos = Array.isArray(dados)

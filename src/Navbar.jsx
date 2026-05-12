@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User } from "lucide-react";
+import { User, ShoppingCart } from "lucide-react";
+import { useCart } from "./CartContext";
 
 function getUserFromToken() {
   try {
@@ -15,13 +16,14 @@ export default function Navbar() {
   const token = localStorage.getItem("token");
   const userName = localStorage.getItem("userName") || "Utilizador";
   const user = getUserFromToken();
+  const { cart } = useCart();
   const [fotoPerfil, setFotoPerfil] = useState(
     localStorage.getItem("userFoto") || null
   );
 
   useEffect(() => {
     if (!user) return;
-    fetch(`http://localhost:3001/api/utilizadores/${user.id}`)
+    fetch(`${import.meta.env.VITE_API_URL}/api/utilizadores/${user.id}`)
       .then((r) => r.json())
       .then((dados) => {
         if (dados.foto_perfil) {
@@ -46,6 +48,14 @@ export default function Navbar() {
       </Link>
 
       <div className="flex gap-5 items-center font-medium">
+        <Link to="/carrinho" className="relative flex items-center text-white hover:text-gray-300 transition-colors">
+          <ShoppingCart className="w-6 h-6" />
+          {cart.length > 0 && (
+            <span className="absolute -top-2 -right-2 bg-indigo-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              {cart.length}
+            </span>
+          )}
+        </Link>
         {token ? (
           <div className="flex items-center gap-4">
             <button

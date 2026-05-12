@@ -14,7 +14,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const resposta = await fetch('http://localhost:3001/api/utilizadores/login', {
+      const resposta = await fetch(`${import.meta.env.VITE_API_URL}/api/utilizadores/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -34,7 +34,7 @@ export default function Login() {
         setErro(dados.erro || 'Erro ao fazer login. Verifica os teus dados.');
       }
     } catch (error) {
-      setErro('Não foi possível ligar ao servidor. Verifica se o backend está a correr.');
+      setErro('Não foi possível ligar ao servidor.');
     } finally {
       setLoading(false);
     }

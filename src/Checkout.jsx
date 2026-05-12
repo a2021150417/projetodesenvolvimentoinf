@@ -99,7 +99,7 @@ export default function Checkout() {
     const resultados = [];
     for (const item of cart) {
       try {
-        const res = await fetch("http://localhost:3001/api/bilhetes", {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/bilhetes`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -108,6 +108,8 @@ export default function Checkout() {
           body: JSON.stringify({
             id_utilizador: utilizador.id,
             id_evento: item.eventId,
+            email: form.email,
+            nome: form.nome,
           }),
         });
 

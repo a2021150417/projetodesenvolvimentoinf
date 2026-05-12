@@ -1,21 +1,10 @@
 const { Pool } = require("pg");
 require("dotenv").config();
 
-// Criamos um objeto de configuração apenas com os campos obrigatórios
-const config = {
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-};
-
-// Se a password existir no .env (e não estiver vazia), nós adicionamo-la.
-// Se não existir, o Node não tenta enviar uma password vazia à BD.
-if (process.env.DB_PASSWORD && process.env.DB_PASSWORD.trim() !== "") {
-  config.password = process.env.DB_PASSWORD;
-}
-
-const pool = new Pool(config);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 // Forçar encoding UTF8 em cada nova ligação para evitar problemas com acentos
 pool.on("connect", (client) => {

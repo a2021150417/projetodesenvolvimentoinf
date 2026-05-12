@@ -25,7 +25,7 @@ export default function EventDetalhes() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    fetch(`http://localhost:3001/api/eventos/${id}`)
+    fetch(`${import.meta.env.VITE_API_URL}/api/eventos/${id}`)
       .then((r) => r.json())
       .then((dados) => {
         const adapted = {

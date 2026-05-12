@@ -15,19 +15,20 @@ app.use("/uploads", express.static("uploads"));
 const rotasUtilizadores = require("./routes/utilizadores");
 const rotasEventos = require("./routes/eventos");
 const rotasBilhetes = require("./routes/bilhetes");
+const rotasComentarios = require("./routes/comentarios");
 
 // Usar rotas
 app.use("/api/utilizadores", rotasUtilizadores);
 app.use("/api/eventos", rotasEventos);
 app.use("/api/bilhetes", rotasBilhetes);
+app.use("/api/comentarios", rotasComentarios);
 
 // Rota de teste
 app.get("/", (req, res) => {
   res.json({ mensagem: "API a funcionar!" });
 });
 
-// Arrancar servidor
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log("Servidor a correr na porta " + PORT);
 });

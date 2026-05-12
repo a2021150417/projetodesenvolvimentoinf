@@ -1,6 +1,4 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { User, Ticket, Camera, History, Heart, Calendar, Settings, ChevronLeft, ShieldCheck } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
 
 function getUserFromToken() {
   try {
@@ -9,38 +7,65 @@ function getUserFromToken() {
     return JSON.parse(atob(token.split(".")[1]));
   } catch { return null; }
 }
+import { useNavigate, Link } from "react-router-dom";
+import { User, Ticket, Camera, History, Heart, Calendar, Settings, ChevronLeft, ShieldCheck } from "lucide-react";
+import { useFavorites } from "./FavoritesContext";
+
 
 export default function Perfil() {
   const navigate = useNavigate();
-  const user = getUserFromToken();
+  const user = useMemo(() => getUserFromToken(), []);
   const userName = localStorage.getItem("userName") || "Utilizador";
+  const { favorites } = useFavorites();
   const fileInputRef = useRef(null);
 
   const [nome, setNome] = useState(userName);
   const [email, setEmail] = useState("");
   const [fotoPerfil, setFotoPerfil] = useState(localStorage.getItem("userFoto") || null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [uploadando, setUploadando] = useState(false);
   const [mensagem, setMensagem] = useState("");
+  const [stats, setStats] = useState({ eventos_assistidos: 0, favoritos_guardados: 0, membro_desde: new Date().getFullYear() });
+  const [eventosDetalhes, setEventosDetalhes] = useState({});
 
   useEffect(() => {
     window.scrollTo(0, 0);
     if (!user) { navigate("/login"); return; }
     
-    fetch(`http://localhost:3001/api/utilizadores/${user.id}`)
-      .then((r) => r.json())
-      .then((dados) => {
-        setNome(dados.nome || "");
-        setEmail(dados.email || "");
-        if (dados.foto_perfil) {
-          setFotoPerfil(dados.foto_perfil);
-          localStorage.setItem("userFoto", dados.foto_perfil);
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch(`${import.meta.env.VITE_API_URL}/api/utilizadores/${user.id}`).then(r => r.json()),
+      fetch(`${import.meta.env.VITE_API_URL}/api/utilizadores/${user.id}/stats`).then(r => r.json())
+    ])
+    .then(([dados, statsData]) => {
+      setNome(dados.nome || "");
+      setEmail(dados.email || "");
+      if (dados.foto_perfil) {
+        setFotoPerfil(dados.foto_perfil);
+        localStorage.setItem("userFoto", dados.foto_perfil);
+      }
+      if (dados.is_admin) setIsAdmin(true);
+      setStats(statsData);
+      setLoading(false);
+    })
+    .catch(() => setLoading(false));
   }, [user, navigate]);
+
+  // Carregar detalhes dos eventos favoritos
+  useEffect(() => {
+    if (favorites.size === 0) return;
+    favorites.forEach((eventId) => {
+      if (!eventosDetalhes[eventId]) {
+        fetch(`${import.meta.env.VITE_API_URL}/api/eventos/${eventId}`)
+          .then(r => r.json())
+          .then(dados => {
+            setEventosDetalhes(prev => ({ ...prev, [eventId]: dados }));
+          })
+          .catch(() => {});
+      }
+    });
+  }, [favorites]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -53,14 +78,10 @@ export default function Perfil() {
     setGuardando(true);
     setMensagem("");
     try {
-      const res = await fetch(`http://localhost:3001/api/utilizadores/${user.id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/utilizadores/${user.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          nome, 
-          email, 
-          foto_perfil: fotoPerfil 
-        }), 
+        body: JSON.stringify({ nome, email }),
       });
       
       if (res.ok) {
@@ -77,27 +98,36 @@ export default function Perfil() {
     }
   };
 
-  const handleFotoChange = (e) => {
+  const handleFotoChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setUploadando(true);
-    
-    // Transforma a imagem num formato de texto (Base64) para guardar na BD
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result;
-      
-      setTimeout(() => {
-        setFotoPerfil(base64String);
-        localStorage.setItem("userFoto", base64String);
-        setUploadando(false);
-        setMensagem("✅ Foto adicionada! Clica em 'Guardar Alteraçóes' para gravar.");
-        setTimeout(() => setMensagem(""), 4000);
-      }, 800);
-    };
-    
-    reader.readAsDataURL(file);
+    setMensagem("");
+
+    try {
+      const formData = new FormData();
+      formData.append("foto", file);
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/utilizadores/${user.id}/foto`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const dados = await res.json();
+        setFotoPerfil(dados.foto_perfil);
+        localStorage.setItem("userFoto", dados.foto_perfil);
+        setMensagem("✅ Foto de perfil atualizada!");
+        setTimeout(() => setMensagem(""), 3000);
+      } else {
+        setMensagem("❌ Erro ao carregar a foto.");
+      }
+    } catch {
+      setMensagem("❌ Não foi possível ligar ao servidor.");
+    } finally {
+      setUploadando(false);
+    }
   };
 
   return (
@@ -146,6 +176,11 @@ export default function Perfil() {
               <button onClick={() => navigate("/bilhetes-ativos")} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-gray-500 hover:bg-slate-50 hover:text-black rounded-2xl transition-colors">
                 <Ticket className="w-4 h-4" /> Os Meus Bilhetes
               </button>
+              {isAdmin && (
+                <button onClick={() => navigate("/admin")} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-colors border border-indigo-100">
+                  <ShieldCheck className="w-4 h-4" /> Painel Admin
+                </button>
+              )}
             </nav>
           </div>
 
@@ -159,29 +194,68 @@ export default function Perfil() {
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">O Meu Perfil</h1>
 
           {/* DASHBOARD DE ESTATÍSTICAS */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
               <div className="w-12 h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center mb-3">
                 <Ticket className="w-5 h-5" />
               </div>
-              <p className="text-3xl font-black text-gray-900">12</p>
+              <p className="text-3xl font-black text-gray-900">{stats.eventos_assistidos}</p>
               <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Eventos Assistidos</p>
-            </div>
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-              <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-3">
-                <Heart className="w-5 h-5" />
-              </div>
-              <p className="text-3xl font-black text-gray-900">4</p>
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Favoritos Guardados</p>
             </div>
             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
               <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-3">
                 <Calendar className="w-5 h-5" />
               </div>
-              <p className="text-3xl font-black text-gray-900">2026</p>
+              <p className="text-3xl font-black text-gray-900">{stats.membro_desde}</p>
               <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Membro desde</p>
             </div>
           </div>
+
+          {/* EVENTOS FAVORITOS */}
+          {favorites.size > 0 && (
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 sm:p-10">
+              <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Os Meus Favoritos</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from(favorites).map((eventId) => {
+                  const evento = eventosDetalhes[eventId];
+                  return (
+                    <Link
+                      key={eventId}
+                      to={`/eventos/${eventId}`}
+                      className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg hover:shadow-black/5 transition-all duration-300 hover:-translate-y-1 flex flex-col cursor-pointer"
+                    >
+                      <div className="relative h-40 overflow-hidden bg-gray-200">
+                        {evento?.foto_evento ? (
+                          <img src={evento.foto_evento} alt={evento.titulo} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 group-hover:scale-110 transition-transform duration-700" />
+                        )}
+                        <div className="absolute top-3 right-3 bg-red-500 text-white rounded-full p-2 flex items-center justify-center shadow-lg">
+                          <Heart className="w-4 h-4 fill-current" />
+                        </div>
+                      </div>
+                      <div className="p-4 flex flex-col flex-grow">
+                        {evento?.data_hora && (
+                          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">
+                            {new Date(evento.data_hora).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })}
+                          </p>
+                        )}
+                        <h3 className="font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-indigo-600">
+                          {evento?.titulo || `Evento #${eventId}`}
+                        </h3>
+                        {evento?.morada && (
+                          <p className="text-xs text-gray-500 mb-2 line-clamp-1">📍 {evento.morada}</p>
+                        )}
+                        {evento?.preco && (
+                          <p className="text-sm font-bold text-indigo-600 mt-auto">{evento.preco}€</p>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* FORMULÁRIO DE EDIÇÃO */}
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 sm:p-10">

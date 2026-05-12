@@ -60,7 +60,6 @@ body {
   min-height: 100svh;
   display: flex;
   flex-direction: column;
-  /* Apagámos o width, max-width, margin, text-align e borders! */
 }
 
 h1,
