@@ -1,10 +1,10 @@
 -- -------------------------------------------------------------
--- TablePlus 6.9.1(670)
+-- TablePlus 6.9.6(676)
 --
 -- https://tableplus.com/
 --
 -- Database: quickpass
--- Generation Time: 2026-05-12 17:20:47.4800
+-- Generation Time: 2026-05-13 02:23:02.1070
 -- -------------------------------------------------------------
 
 
@@ -32,21 +32,6 @@ CREATE TABLE "public"."eventos" (
     "novo" bool DEFAULT true,
     "classificacao" numeric(2,1) DEFAULT 5.0,
     PRIMARY KEY ("id_evento")
-);
-
-DROP TABLE IF EXISTS "public"."bilhetes";
--- Sequence and defined type
-CREATE SEQUENCE IF NOT EXISTS bilhetes_id_bilhete_seq;
-
--- Table Definition
-CREATE TABLE "public"."bilhetes" (
-    "id_bilhete" int4 NOT NULL DEFAULT nextval('bilhetes_id_bilhete_seq'::regclass),
-    "id_utilizador" int4 NOT NULL,
-    "id_evento" int4 NOT NULL,
-    "codigo_qr" varchar(100) NOT NULL,
-    "data_compra" timestamp DEFAULT CURRENT_TIMESTAMP,
-    "estado_bilhete" varchar(20) DEFAULT 'ativo'::character varying,
-    PRIMARY KEY ("id_bilhete")
 );
 
 DROP TABLE IF EXISTS "public"."utilizador";
@@ -83,43 +68,75 @@ CREATE TABLE "public"."comentarios" (
     PRIMARY KEY ("id_comentario")
 );
 
-INSERT INTO "public"."eventos" ("id_evento", "titulo", "descricao", "descricao_curta", "data_hora", "hora_portas", "hora_inicio", "preco", "stock_disponivel", "foto_evento", "categoria", "distrito", "local_evento", "morada", "em_alta", "novo", "classificacao") VALUES
-(1, 'Concerto do Travis Scott', 'Astro mundial da música vem a Portugal pela primeira vez. Não percas esta oportunidade de ver ao vivo um dos maiores nomes do rap e trap contemporâneo, numa noite inesquecível no Altice Arena.', 'Astro mundial da música vem a Portugal pela primeira vez. Não percas esta oportunidade única', '2026-02-14 21:00:00', '19:00:00', '21:00:00', 90.00, 138, 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=1200&q=80', 'Música', 'Lisboa', 'Altice Arena', 'Rossio dos Olivais, 1990-231 Lisboa', 't', 'f', 4.8),
-(2, 'Benfica x Porto', 'Clássico português a não perder. Duas das maiores equipas de Portugal defrontam-se num jogo decisivo no Estádio da Luz.', 'Clássico português a não perder. Duas das maiores equipas de Portugal.', '2026-03-17 20:15:00', '18:00:00', '20:15:00', 55.00, 799, 'https://images.unsplash.com/photo-1459865264687-595d652de67e?w=1200&q=80', 'Desporto', 'Lisboa', 'Estádio da Luz', 'Av. Eusébio da Silva Ferreira, 1500-313 Lisboa', 't', 'f', 4.9),
-(3, 'NOS Alive', 'Um dos festivais mais prestigiados da Europa, que combina o melhor do indie, rock e eletrónica no Passeio Marítimo de Algés.', 'Um dos festivais mais prestigiados da Europa, que combina o melhor do indie, rock e eletrónica.', '2026-05-18 17:00:00', '16:00:00', '17:00:00', 79.00, 250, 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=1200&q=80', 'Música', 'Lisboa', 'Passeio Marítimo de Algés', 'Passeio Marítimo de Algés, 1495-165 Algés', 'f', 't', 4.7),
-(4, 'Levanta-te e Ri - Edição Especial', 'Uma noite de gargalhadas garantidas com os melhores nomes do stand-up nacional num espetáculo ao vivo e sem filtros.', 'Uma noite de gargalhadas garantidas com os melhores nomes do stand-up nacional.', '2027-11-26 21:00:00', '20:00:00', '21:00:00', 25.00, 699, 'https://images.unsplash.com/photo-1527224857830-43a7acc85260?w=1200&q=80', 'Comédia', 'Porto', 'Coliseu do Porto', 'R. de Passos Manuel 137, 4000-385 Porto', 'f', 't', 4.6),
-(5, 'O Fantasma da Ópera', 'A grandiosa produção da Broadway chega ao palco do Coliseu para uma experiência musical imersiva e visualmente deslumbrante.', 'A grandiosa produção da Broadway chega ao palco do Coliseu.', '2026-01-15 20:30:00', '19:30:00', '20:30:00', 45.00, 3, 'https://images.unsplash.com/photo-1503095396549-807759245b35?w=1200&q=80', 'Teatro', 'Lisboa', 'Coliseu dos Recreios', 'R. das Portas de Santo Antão 96, 1150-269 Lisboa', 'f', 'f', 4.9),
-(6, 'Masters of Tennis', 'Os grandes nomes do ténis mundial defrontam-se num torneio de exibição exclusivo sob o sol da Quinta do Lago.', 'Os grandes nomes do ténis mundial defrontam-se num torneio de exibição exclusivo.', '2026-02-01 14:00:00', '13:00:00', '14:00:00', 35.00, 178, 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=1200&q=80', 'Desporto', 'Leiria', 'Quinta do Lago', 'Quinta do Lago, 8135-024 Almancil', 'f', 'f', 4.5);
+DROP TABLE IF EXISTS "public"."bilhetes";
+-- Sequence and defined type
+CREATE SEQUENCE IF NOT EXISTS bilhetes_id_bilhete_seq;
 
-INSERT INTO "public"."bilhetes" ("id_bilhete", "id_utilizador", "id_evento", "codigo_qr", "data_compra", "estado_bilhete") VALUES
-(5, 4, 5, 'QR-5-4-1778101817137', '2026-05-06 22:10:17.121598', 'usado'),
-(6, 4, 5, 'QR-5-4-1778101921394', '2026-05-06 22:12:01.39342', 'usado'),
-(7, 4, 5, 'QR-5-4-1778102135289', '2026-05-06 22:15:35.288309', 'usado'),
-(8, 5, 1, 'QR-1-5-1778106331574', '2026-05-06 23:25:31.571575', 'usado'),
-(9, 5, 5, 'QR-5-5-1778160189730', '2026-05-07 14:23:09.727424', 'ativo'),
-(10, 5, 2, 'QR-2-5-1778163469045', '2026-05-07 15:17:49.041281', 'usado'),
-(11, 5, 1, 'QR-1-5-1778163913177', '2026-05-07 15:25:13.173257', 'usado'),
-(12, 5, 6, 'QR-6-5-1778165516921', '2026-05-07 15:51:56.916217', 'usado'),
-(13, 5, 5, 'QR-5-5-1778165612932', '2026-05-07 15:53:32.930964', 'usado');
+-- Table Definition
+CREATE TABLE "public"."bilhetes" (
+    "id_bilhete" int4 NOT NULL DEFAULT nextval('bilhetes_id_bilhete_seq'::regclass),
+    "id_utilizador" int4,
+    "id_evento" int4 NOT NULL,
+    "codigo_qr" varchar(100) NOT NULL,
+    "data_compra" timestamp DEFAULT CURRENT_TIMESTAMP,
+    "estado_bilhete" int4 DEFAULT 2,
+    PRIMARY KEY ("id_bilhete")
+);
+
+INSERT INTO "public"."eventos" ("id_evento", "titulo", "descricao", "descricao_curta", "data_hora", "hora_portas", "hora_inicio", "preco", "stock_disponivel", "foto_evento", "categoria", "distrito", "local_evento", "morada", "em_alta", "novo", "classificacao") VALUES
+(1, 'Concerto do Travis Scott', 'Astro mundial da música vem a Portugal pela primeira vez. Não percas esta oportunidade de ver ao vivo um dos maiores nomes do rap e trap contemporâneo, numa noite inesquecível no Altice Arena.', 'Astro mundial da música vem a Portugal pela primeira vez. Não percas esta oportunidade única', '2026-02-14 21:00:00', '19:00:00', '21:00:00', 90.00, 137, 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=1200&q=80', 'Música', 'Lisboa', 'Altice Arena', 'Rossio dos Olivais, 1990-231 Lisboa', 't', 'f', 4.8),
+(2, 'Benfica x Porto', 'Clássico português a não perder. Duas das maiores equipas de Portugal defrontam-se num jogo decisivo no Estádio da Luz.', 'Clássico português a não perder. Duas das maiores equipas de Portugal.', '2026-03-17 20:15:00', '18:00:00', '20:15:00', 55.00, 797, 'https://images.unsplash.com/photo-1459865264687-595d652de67e?w=1200&q=80', 'Desporto', 'Lisboa', 'Estádio da Luz', 'Av. Eusébio da Silva Ferreira, 1500-313 Lisboa', 't', 'f', 4.9),
+(3, 'NOS Alive', 'Um dos festivais mais prestigiados da Europa, que combina o melhor do indie, rock e eletrónica no Passeio Marítimo de Algés.', 'Um dos festivais mais prestigiados da Europa, que combina o melhor do indie, rock e eletrónica.', '2026-05-18 17:00:00', '16:00:00', '17:00:00', 79.00, 248, 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=1200&q=80', 'Música', 'Lisboa', 'Passeio Marítimo de Algés', 'Passeio Marítimo de Algés, 1495-165 Algés', 'f', 't', 4.7),
+(4, 'Levanta-te e Ri - Edição Especial', 'Uma noite de gargalhadas garantidas com os melhores nomes do stand-up nacional num espetáculo ao vivo e sem filtros.', 'Uma noite de gargalhadas garantidas com os melhores nomes do stand-up nacional.', '2027-11-26 21:00:00', '20:00:00', '21:00:00', 25.00, 695, 'https://images.unsplash.com/photo-1527224857830-43a7acc85260?w=1200&q=80', 'Comédia', 'Porto', 'Coliseu do Porto', 'R. de Passos Manuel 137, 4000-385 Porto', 'f', 't', 4.6),
+(5, 'O Fantasma da Ópera', 'A grandiosa produção da Broadway chega ao palco do Coliseu para uma experiência musical imersiva e visualmente deslumbrante.', 'A grandiosa produção da Broadway chega ao palco do Coliseu.', '2026-01-15 20:30:00', '19:30:00', '20:30:00', 45.00, 1, 'https://images.unsplash.com/photo-1503095396549-807759245b35?w=1200&q=80', 'Teatro', 'Lisboa', 'Coliseu dos Recreios', 'R. das Portas de Santo Antão 96, 1150-269 Lisboa', 'f', 'f', 4.9),
+(6, 'Masters of Tennis', 'Os grandes nomes do ténis mundial defrontam-se num torneio de exibição exclusivo sob o sol da Quinta do Lago.', 'Os grandes nomes do ténis mundial defrontam-se num torneio de exibição exclusivo.', '2026-02-01 14:00:00', '13:00:00', '14:00:00', 35.00, 173, 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=1200&q=80', 'Desporto', 'Leiria', 'Quinta do Lago', 'Quinta do Lago, 8135-024 Almancil', 'f', 'f', 4.5);
 
 INSERT INTO "public"."utilizador" ("id_utilizador", "nome", "email", "password", "data_nascimento", "foto_perfil", "data_registo", "is_admin", "reset_token", "reset_token_expira") VALUES
 (4, 'João Morais', 'joaop13smorais@gmail.com', '$2b$10$YRH2rzZq6XhfV9UXQ14vwOY4kZv.Dj1Pu3jUkI7YbHzxNv/kuopdG', NULL, NULL, '2026-05-06 22:08:52.049284', 'f', NULL, NULL),
 (5, 'André Guiné Barreira', 'andre2013barreira@gmail.com', '$2b$10$.5v2oZDafj/.ek5wRhKrPeuFd3i2Y87w3nGiRWZ8zDPNJ8DcrvwUq', NULL, NULL, '2026-05-06 22:20:26.073968', 'f', NULL, NULL),
-(10, 'Admin', 'admin@quickpass.pt', '$2b$10$3ZY.JVircKW4zBCkGHz7ku9o7xjZlc144qYraqQPhmHrEfBvnKmFK', NULL, NULL, '2026-05-05 16:49:57.585836', 't', NULL, NULL);
+(6, 'a', 'a@gmail.com', '$2b$10$BciHy2Q2rSlcX/ihyBM6Iu4NfyoajyVmvVPUEM6QLCEdAHWlRln5i', NULL, NULL, '2026-05-12 17:58:30.42994', 'f', NULL, NULL),
+(10, 'Admin', 'admin@quickpass.pt', '$2b$10$3ZY.JVircKW4zBCkGHz7ku9o7xjZlc144qYraqQPhmHrEfBvnKmFK', NULL, 'http://localhost:3001/uploads/fotos/user_10_1778605000430.svg', '2026-05-05 16:49:57.585836', 't', NULL, NULL);
 
 INSERT INTO "public"."comentarios" ("id_comentario", "id_utilizador", "nome", "comentario", "estrelas", "data_comentario") VALUES
 (1, NULL, 'a', 'a', 5, '2026-05-06 21:56:52.470737'),
 (2, NULL, 'jose', 'adorei
 ', 5, '2026-05-07 14:29:28.506055');
 
-ALTER TABLE "public"."bilhetes" ADD FOREIGN KEY ("id_utilizador") REFERENCES "public"."utilizador"("id_utilizador") ON DELETE CASCADE;
-ALTER TABLE "public"."bilhetes" ADD FOREIGN KEY ("id_evento") REFERENCES "public"."eventos"("id_evento") ON DELETE CASCADE;
+INSERT INTO "public"."bilhetes" ("id_bilhete", "id_utilizador", "id_evento", "codigo_qr", "data_compra", "estado_bilhete") VALUES
+(5, 4, 5, 'QR-5-4-1778101817137', '2026-05-06 22:10:17.121598', 1),
+(6, 4, 5, 'QR-5-4-1778101921394', '2026-05-06 22:12:01.39342', 1),
+(7, 4, 5, 'QR-5-4-1778102135289', '2026-05-06 22:15:35.288309', 1),
+(8, 5, 1, 'QR-1-5-1778106331574', '2026-05-06 23:25:31.571575', 1),
+(9, 5, 5, 'QR-5-5-1778160189730', '2026-05-07 14:23:09.727424', 1),
+(10, 5, 2, 'QR-2-5-1778163469045', '2026-05-07 15:17:49.041281', 1),
+(11, 5, 1, 'QR-1-5-1778163913177', '2026-05-07 15:25:13.173257', 1),
+(12, 5, 6, 'QR-6-5-1778165516921', '2026-05-07 15:51:56.916217', 1),
+(13, 5, 5, 'QR-5-5-1778165612932', '2026-05-07 15:53:32.930964', 1),
+(14, NULL, 6, 'QR-6-null-1778617084875', '2026-05-12 21:18:04.819984', 2),
+(15, NULL, 5, 'QR-5-null-1778617278227', '2026-05-12 21:21:18.225333', 2),
+(16, NULL, 1, 'QR-1-null-1778617325666', '2026-05-12 21:22:05.664261', 2),
+(17, NULL, 2, 'QR-2-null-1778617325685', '2026-05-12 21:22:05.685262', 1),
+(18, NULL, 4, 'QR-4-null-1778617325697', '2026-05-12 21:22:05.696747', 2),
+(19, NULL, 5, 'QR-5-null-1778617525061', '2026-05-12 21:25:25.058744', 2),
+(20, 5, 3, 'QR-3-5-1778627947285', '2026-05-13 00:19:07.282318', 2),
+(21, 5, 4, 'QR-4-5-1778628063657', '2026-05-13 00:21:03.653872', 1),
+(22, 5, 6, 'QPEV6U5TS1778629477215', '2026-05-13 00:44:37.195804', 1),
+(23, 5, 6, 'QPEV6U5TS1778629534022', '2026-05-13 00:45:34.020024', 1),
+(24, 5, 6, 'QPEV6U5TS1778629714561', '2026-05-13 00:48:34.557704', 1),
+(25, NULL, 2, 'QPEV2ANDRE2013BARREIRATS1778629824399', '2026-05-13 00:50:24.396707', 2),
+(26, NULL, 4, 'QPEV4ANDRE2013BARREIRATS1778629968701', '2026-05-13 00:52:48.696125', 1),
+(27, NULL, 6, 'QPEV6ANDRE2013BARREIRATS1778630091693', '2026-05-13 00:54:51.689525', 2),
+(28, NULL, 3, 'QPEV3ANDRE2013BARREIRATS1778630126669', '2026-05-13 00:55:26.667973', 2),
+(29, NULL, 4, 'QPEV4ANDRE2013BARREIRATS1778630225263', '2026-05-13 00:57:05.260629', 2);
 
-
--- Indices
-CREATE UNIQUE INDEX bilhetes_codigo_qr_key ON public.bilhetes USING btree (codigo_qr);
 
 
 -- Indices
 CREATE UNIQUE INDEX utilizador_email_key ON public.utilizador USING btree (email);
 ALTER TABLE "public"."comentarios" ADD FOREIGN KEY ("id_utilizador") REFERENCES "public"."utilizador"("id_utilizador") ON DELETE SET NULL;
+ALTER TABLE "public"."bilhetes" ADD FOREIGN KEY ("id_evento") REFERENCES "public"."eventos"("id_evento") ON DELETE CASCADE;
+ALTER TABLE "public"."bilhetes" ADD FOREIGN KEY ("id_utilizador") REFERENCES "public"."utilizador"("id_utilizador") ON DELETE CASCADE;
+
+
+-- Indices
+CREATE UNIQUE INDEX bilhetes_codigo_qr_key ON public.bilhetes USING btree (codigo_qr);
