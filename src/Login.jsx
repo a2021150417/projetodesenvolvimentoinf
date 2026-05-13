@@ -23,14 +23,12 @@ export default function Login() {
       const dados = await resposta.json();
 
       if (resposta.ok) {
-        // Guarda o token de segurança
         localStorage.setItem('token', dados.token);
         localStorage.setItem('userName', dados.utilizador.nome);
         localStorage.setItem('userId', dados.utilizador.id_utilizador);
         
-        navigate('/'); // Redireciona para a Home em caso de sucesso
+        navigate('/');
       } else {
-        // Usa o "dados.erro" que é como o teu backend envia a mensagem
         setErro(dados.erro || 'Erro ao fazer login. Verifica os teus dados.');
       }
     } catch (error) {
@@ -43,7 +41,6 @@ export default function Login() {
   return (
     <div className="font-sans min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-slate-100">
       
-      {/* --- PAINEL ESQUERDO: Imagem e Marca --- */}
       <div className="relative overflow-hidden bg-gray-900 order-last lg:order-first lg:sticky lg:top-0 lg:h-screen">
         <div 
           className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 hover:scale-110"
@@ -73,7 +70,6 @@ export default function Login() {
         </div>
       </div>
 
-      {/* --- PAINEL DIREITO: Formulário de Login --- */}
       <div className="flex items-center justify-center p-8 lg:p-16 xl:p-24 bg-slate-100">
         <div className="bg-white p-12 rounded-3xl shadow-2xl shadow-gray-200 border border-gray-100 w-full max-w-lg">
           
@@ -84,7 +80,6 @@ export default function Login() {
           
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-8 text-gray-900 tracking-tight">Entrar na conta</h2>
           
-          {/* AVISO DE ERRO */}
           {erro && (
             <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-semibold mb-6 border border-red-100">
               {erro}

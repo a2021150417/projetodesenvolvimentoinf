@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { User, Ticket, Camera, History, Heart, Calendar, Settings, ChevronLeft, ShieldCheck } from "lucide-react";
+import { useFavorites } from "./FavoritesContext";
 
 function getUserFromToken() {
   try {
@@ -7,9 +10,6 @@ function getUserFromToken() {
     return JSON.parse(atob(token.split(".")[1]));
   } catch { return null; }
 }
-import { useNavigate, Link } from "react-router-dom";
-import { User, Ticket, Camera, History, Heart, Calendar, Settings, ChevronLeft, ShieldCheck } from "lucide-react";
-import { useFavorites } from "./FavoritesContext";
 
 
 export default function Perfil() {
@@ -52,7 +52,6 @@ export default function Perfil() {
     .catch(() => setLoading(false));
   }, [user, navigate]);
 
-  // Carregar detalhes dos eventos favoritos
   useEffect(() => {
     if (favorites.size === 0) return;
     favorites.forEach((eventId) => {
@@ -133,7 +132,6 @@ export default function Perfil() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
       
-      {/* NAVBAR SUPERIOR */}
       <nav className="w-full z-50 bg-gray-950 text-white flex justify-between items-center px-8 py-4 shadow-sm sticky top-0">
         <Link to="/" className="text-xl font-bold flex items-center gap-2 hover:opacity-80 transition-opacity">
           <span className="bg-white text-black p-1 rounded text-sm">QP</span> QuickPass
@@ -159,7 +157,6 @@ export default function Perfil() {
 
       <div className="max-w-screen-xl mx-auto w-full flex-grow flex flex-col md:flex-row gap-8 px-4 sm:px-8 py-10">
         
-        {/* SIDEBAR LATERAL */}
         <aside className="w-full md:w-64 flex-shrink-0 space-y-2">
           <Link to="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-black font-bold text-sm mb-6 transition-colors">
             <ChevronLeft className="w-4 h-4" /> Voltar à Home
@@ -189,11 +186,9 @@ export default function Perfil() {
           </button>
         </aside>
 
-        {/* ÁREA PRINCIPAL */}
         <main className="flex-1 space-y-8">
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">O Meu Perfil</h1>
 
-          {/* DASHBOARD DE ESTATÍSTICAS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
               <div className="w-12 h-12 bg-green-50 text-green-600 rounded-full flex items-center justify-center mb-3">
@@ -211,7 +206,6 @@ export default function Perfil() {
             </div>
           </div>
 
-          {/* EVENTOS FAVORITOS */}
           {favorites.size > 0 && (
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 sm:p-10">
               <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Os Meus Favoritos</h2>
@@ -257,7 +251,6 @@ export default function Perfil() {
             </div>
           )}
 
-          {/* FORMULÁRIO DE EDIÇÃO */}
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 sm:p-10">
             {loading ? (
               <div className="flex items-center justify-center h-48">
@@ -266,7 +259,6 @@ export default function Perfil() {
             ) : (
               <div className="max-w-2xl">
                 
-                {/* ZONA DA FOTOGRAFIA */}
                 <div className="flex flex-col sm:flex-row items-center gap-6 mb-10 pb-8 border-b border-gray-100">
                   <div className="relative group">
                     {fotoPerfil ? (
@@ -304,7 +296,6 @@ export default function Perfil() {
                   </div>
                 )}
 
-                {/* ZONA DOS DADOS */}
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-bold text-gray-900 mb-2">Nome Completo</label>

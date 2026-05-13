@@ -7,9 +7,8 @@ const app = express();
 // Middlewares
 app.use(cors());
 app.use(express.json());
-
-// Servir imagens de perfil
-app.use("/uploads", express.static("uploads"));
+const utilizadorRoutes = require("./routes/utilizadores");
+app.use("/api/utilizadores", utilizadorRoutes);
 
 // Importar rotas
 const rotasUtilizadores = require("./routes/utilizadores");

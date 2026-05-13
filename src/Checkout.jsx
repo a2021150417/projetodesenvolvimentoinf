@@ -6,6 +6,7 @@ import {
   Calendar, MapPin, Ticket, Loader2,
 } from "lucide-react";
 import Navbar from "./Navbar";
+import Footer from "./Footer";
 import { useCart } from "./CartContext";
 
 function formatDateLong(iso) {
@@ -14,7 +15,6 @@ function formatDateLong(iso) {
   return d.toLocaleDateString("pt-PT", { day: "numeric", month: "long", year: "numeric" });
 }
 
-// Componente QR Code simples gerado via API pública (sem dependências)
 function QRCodeImage({ value, size = 140 }) {
   const encoded = encodeURIComponent(value);
   return (
@@ -27,7 +27,19 @@ function QRCodeImage({ value, size = 140 }) {
     />
   );
 }
+const formatPhone = (v) => v.replace(/\D/g, "").slice(0, 9);
 
+const formatExpiry = (v) => {
+  let digits = v.replace(/\D/g, "").slice(0, 4);
+  if (digits.length >= 2) {
+    let month = parseInt(digits.slice(0, 2));
+    if (month > 12) month = 12; // Corrige meses tipo 13, 14...
+    if (month === 0) month = 1;
+    digits = month.toString().padStart(2, '0') + digits.slice(2);
+    return digits.slice(0, 2) + (digits.length > 2 ? "/" + digits.slice(2) : "");
+  }
+  return digits;
+};
 export default function Checkout() {
   const navigate = useNavigate();
   const { cart, clearCart } = useCart();
@@ -37,8 +49,7 @@ export default function Checkout() {
     cardNumber: "", cardName: "", expiry: "", cvv: "",
   });
 
-  // Estados do pagamento
-  const [step, setStep] = useState("form"); // "form" | "processing" | "success" | "error"
+  const [step, setStep] = useState("form"); 
   const [processingMsg, setProcessingMsg] = useState("");
   const [bilhetesComprados, setBilhetesComprados] = useState([]);
   const [erroMsg, setErroMsg] = useState("");
@@ -64,7 +75,6 @@ export default function Checkout() {
     return digits.slice(0, 2) + "/" + digits.slice(2);
   };
 
-  // Obter utilizador do JWT no localStorage
   const getUtilizador = () => {
     try {
       const token = localStorage.getItem("token");
@@ -75,64 +85,84 @@ export default function Checkout() {
       return null;
     }
   };
-
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setStep("processing");
+  e.preventDefault();
+  
+  let errosEncontrados = [];
 
-    const utilizador = getUtilizador();
-    if (!utilizador) {
-      setErroMsg("Precisas de estar autenticado para comprar bilhetes.");
+  if (form.telefone.replace(/\D/g, "").length !== 9) {
+    errosEncontrados.push("O número de telefone deve ter 9 dígitos.");
+  }
+
+  const expiryClean = form.expiry.replace(/\D/g, "");
+  if (expiryClean.length !== 4) {
+    errosEncontrados.push("Data de validade inválida (usa MM/AA).");
+  } else {
+    const month = parseInt(expiryClean.slice(0, 2));
+    const yearShort = parseInt(expiryClean.slice(2));
+    const yearFull = 2000 + yearShort;
+    
+    const agora = new Date();
+    const anoAtual = agora.getFullYear(); 
+    const mesAtual = agora.getMonth() + 1;
+
+    if (yearFull < anoAtual || (yearFull === anoAtual && month < mesAtual)) {
+      errosEncontrados.push(`O cartão expirou (estamos em ${mesAtual.toString().padStart(2, '0')}/${anoAtual.toString().slice(-2)}).`);
+    }
+  }
+
+  if (errosEncontrados.length > 0) {
+    setErroMsg(errosEncontrados.join(" | ")); 
+    setStep("error");
+    return;
+  }
+  setStep("processing");
+
+  const utilizador = getUtilizador(); 
+
+  setProcessingMsg("A verificar dados do cartão...");
+  await new Promise((r) => setTimeout(r, 800));
+  setProcessingMsg("A processar pagamento...");
+  await new Promise((r) => setTimeout(r, 900));
+  setProcessingMsg("A gerar os teus bilhetes...");
+  await new Promise((r) => setTimeout(r, 600));
+
+  const resultados = [];
+  for (const item of cart) {
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/bilhetes`, {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({
+          id_utilizador: utilizador ? utilizador.id : null, 
+          id_evento: item.eventId,
+          email: form.email,
+          nome: form.nome,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.erro || "Erro ao criar bilhete");
+      }
+
+      const bilhete = await res.json();
+      resultados.push({ ...bilhete, item });
+    } catch (err) {
+      setErroMsg(`Erro ao comprar bilhete para "${item.eventTitle}": ${err.message}`);
       setStep("error");
       return;
     }
+  }
 
-    // Simular processamento de pagamento (1.5s)
-    setProcessingMsg("A verificar dados do cartão...");
-    await new Promise((r) => setTimeout(r, 800));
-    setProcessingMsg("A processar pagamento...");
-    await new Promise((r) => setTimeout(r, 900));
-    setProcessingMsg("A gerar os teus bilhetes...");
-    await new Promise((r) => setTimeout(r, 600));
-
-    // Para cada item no carrinho, criar bilhete na BD
-    const resultados = [];
-    for (const item of cart) {
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/bilhetes`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({
-            id_utilizador: utilizador.id,
-            id_evento: item.eventId,
-            email: form.email,
-            nome: form.nome,
-          }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.erro || "Erro ao criar bilhete");
-        }
-
-        const bilhete = await res.json();
-        resultados.push({ ...bilhete, item });
-      } catch (err) {
-        setErroMsg(`Erro ao comprar bilhete para "${item.eventTitle}": ${err.message}`);
-        setStep("error");
-        return;
-      }
-    }
-
-    setBilhetesComprados(resultados);
-    clearCart();
-    setStep("success");
-  };
-
-  // ── ECRÃ: A PROCESSAR ──
+  setBilhetesComprados(resultados);
+  clearCart();
+  setStep("success");
+};
   if (step === "processing") {
     return (
       <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
@@ -161,7 +191,6 @@ export default function Checkout() {
     );
   }
 
-  // ── ECRÃ: ERRO ──
   if (step === "error") {
     return (
       <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
@@ -185,115 +214,79 @@ export default function Checkout() {
     );
   }
 
-  // ── ECRÃ: SUCESSO ──
   if (step === "success") {
-    return (
-      <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
-        <Navbar />
-        <main className="flex-1 px-4 py-12">
-          <div className="max-w-lg mx-auto">
-            {/* Header sucesso */}
-            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl px-6 py-10 text-center text-white mb-6 shadow-xl shadow-emerald-200">
-              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-white/20 flex items-center justify-center">
-                <CheckCircle2 className="w-9 h-9" />
-              </div>
-              <h2 className="text-2xl font-bold mb-1">Compra concluída!</h2>
-              <p className="text-white/90 text-sm">
-                Os teus bilhetes foram gerados e guardados no teu perfil.
-              </p>
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+          <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 text-center text-white">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 animate-bounce">
+              <CheckCircle2 className="w-8 h-8 text-white" />
             </div>
+            <h2 className="text-3xl font-black mb-2">Sucesso!</h2>
+            <p className="text-white/90 text-sm">
+              {localStorage.getItem("token") 
+                ? "Os teus bilhetes foram guardados no teu perfil." 
+                : `Enviámos os bilhetes para ${form.email}. Guarda o QR Code abaixo.`}
+            </p>
+          </div>
 
-            {/* Bilhetes com QR */}
-            <div className="space-y-4 mb-6">
-              {bilhetesComprados.map((b, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                  {/* Cabeçalho do bilhete */}
-                  <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-white">
-                      <Ticket className="w-4 h-4" />
-                      <span className="font-bold text-sm">{b.item.ticketType || "Bilhete Geral"}</span>
-                    </div>
-                    <span className="text-white/80 text-xs font-mono">#{b.id_bilhete}</span>
-                  </div>
-
-                  {/* Conteúdo */}
-                  <div className="p-5 flex gap-4 items-center">
-                    <div className="flex-shrink-0">
-                      <QRCodeImage value={b.codigo_qr} size={120} />
-                      <p className="text-[10px] text-gray-400 text-center mt-1 font-mono">{b.codigo_qr.slice(0, 20)}...</p>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-900 text-base mb-1 line-clamp-2">{b.item.eventTitle}</h3>
-                      {b.item.eventDate && (
-                        <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
-                          <Calendar className="w-3 h-3" />
-                          {formatDateLong(b.item.eventDate)}
-                        </div>
-                      )}
-                      {b.item.eventLocation && (
-                        <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
-                          <MapPin className="w-3 h-3" />
-                          {b.item.eventLocation}
-                        </div>
-                      )}
-                      <div className="inline-block bg-emerald-50 text-emerald-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                        ✓ Válido
-                      </div>
+          <div className="p-6 space-y-6">
+            <div className="space-y-4">
+              {bilhetesComprados.map((b, idx) => (
+                <div key={idx} className="bg-gray-50 rounded-2xl border border-dashed border-gray-300 overflow-hidden">
+                  <div className="p-5 flex flex-col items-center border-b border-gray-100">
+                    <QRCodeImage value={b.codigo_qr} />
+                    <div className="mt-4 text-center">
+                      <h3 className="font-black text-gray-900 leading-tight">{b.item.eventTitle}</h3>
+                      <p className="text-xs text-indigo-600 font-bold uppercase mt-1 tracking-widest">{b.codigo_qr}</p>
                     </div>
                   </div>
-
-                  {/* Separador perfurado */}
-                  <div className="flex items-center px-4">
-                    <div className="w-4 h-4 rounded-full bg-gray-50 border border-gray-100 -ml-6" />
-                    <div className="flex-1 border-t-2 border-dashed border-gray-100 mx-2" />
-                    <div className="w-4 h-4 rounded-full bg-gray-50 border border-gray-100 -mr-6" />
-                  </div>
-
+                  
                   <div className="px-5 py-3 flex justify-between items-center text-sm">
-                    <span className="text-gray-500">Preço pago</span>
-                    <span className="font-bold text-gray-900">{Number(b.item.price).toFixed(2)}€</span>
+                    <span className="text-gray-500 font-medium">Preço do Bilhete</span>
+                    <span className="font-bold text-gray-900">
+                      {Number(b.item.price).toFixed(2)}€
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Total */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
-              <div className="flex justify-between text-sm text-gray-500 mb-2">
-                <span>Subtotal</span>
-                <span>{subtotal.toFixed(2)}€</span>
+            <div className="pt-4 border-t border-gray-100">
+              <div className="flex justify-between items-center mb-6">
+                <span className="text-gray-500 font-bold uppercase text-xs tracking-widest">Total Pago</span>
+                <span className="text-2xl font-black text-gray-900">
+                  {(bilhetesComprados.reduce((acc, b) => acc + Number(b.item.price), 0) + 2.5).toFixed(2)}€
+                </span>
               </div>
-              <div className="flex justify-between text-sm text-gray-500 mb-3">
-                <span>Taxa de serviço</span>
-                <span>{serviceFee.toFixed(2)}€</span>
-              </div>
-              <div className="flex justify-between font-bold text-gray-900 text-lg border-t border-gray-100 pt-3">
-                <span>Total pago</span>
-                <span>{total.toFixed(2)}€</span>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => navigate("/perfil")}
-                className="flex items-center justify-center gap-2 bg-indigo-600 text-white font-semibold py-3 rounded-full hover:bg-indigo-700 transition-all text-sm"
-              >
-                <UserIcon className="w-4 h-4" /> Ver perfil
-              </button>
-              <button
-                onClick={() => navigate("/eventos")}
-                className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 font-semibold py-3 rounded-full hover:bg-gray-200 transition-all text-sm"
-              >
-                Mais eventos
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                {localStorage.getItem("token") ? (
+                  <button onClick={() => navigate("/perfil")}
+                    className="flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold py-3.5 rounded-2xl hover:bg-indigo-700 transition-all text-sm shadow-lg shadow-indigo-200">
+                    <UserIcon className="w-4 h-4" /> Ver Perfil
+                  </button>
+                ) : (
+                  <button onClick={() => window.print()}
+                    className="flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold py-3.5 rounded-2xl hover:bg-indigo-700 transition-all text-sm shadow-lg shadow-indigo-200">
+                    Imprimir
+                  </button>
+                )}
+                
+                <button onClick={() => navigate("/eventos")}
+                  className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 font-bold py-3.5 rounded-2xl hover:bg-gray-200 transition-all text-sm">
+                  Mais eventos
+                </button>
+              </div>
             </div>
           </div>
-        </main>
+        </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  // ── ECRÃ: FORMULÁRIO ──
   return (
     <div className="min-h-screen bg-gray-50 font-sans pt-20">
       <Navbar />
@@ -319,9 +312,7 @@ export default function Checkout() {
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Finalizar Compra</h1>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8">
-          {/* Esquerda */}
           <div className="space-y-6">
-            {/* Dados pessoais */}
             <section className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
@@ -360,7 +351,6 @@ export default function Checkout() {
               </div>
             </section>
 
-            {/* Pagamento */}
             <section className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
@@ -374,7 +364,6 @@ export default function Checkout() {
                 </div>
               </div>
 
-              {/* Card preview */}
               <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl p-5 mb-5 text-white shadow-lg shadow-indigo-200 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/5 -translate-y-8 translate-x-8" />
                 <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-white/5 translate-y-8 -translate-x-4" />
@@ -433,7 +422,6 @@ export default function Checkout() {
             </section>
           </div>
 
-          {/* Direita — resumo */}
           <aside className="lg:sticky lg:top-24 self-start">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
               <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-4 text-white">
@@ -494,6 +482,7 @@ export default function Checkout() {
           </aside>
         </form>
       </main>
+      <Footer />
     </div>
   );
 }

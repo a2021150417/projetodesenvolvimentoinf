@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-// GET /api/comentarios
 router.get("/", async (req, res) => {
   try {
     const resultado = await pool.query(
@@ -14,7 +13,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /api/comentarios
 router.post("/", async (req, res) => {
   try {
     const { id_utilizador, nome, comentario, estrelas } = req.body;

@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Clock, Ticket, Star, ChevronLeft, ShieldCheck, Flame, CheckCircle2 } from 'lucide-react';
 import { useCart } from './CartContext';
 import Navbar from "./Navbar";
-
+import Footer from "./Footer";
 function formatDateLong(iso) {
   const d = new Date(iso);
   const weekday = d.toLocaleDateString("pt-PT", { weekday: "long" });
@@ -223,6 +223,7 @@ export default function EventDetalhes() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

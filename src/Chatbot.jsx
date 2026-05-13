@@ -21,22 +21,17 @@ export default function Chatbot() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  // --- O "CÉREBRO 2.0" DO CHATBOT ---
   const generateBotResponse = (userInput) => {
-    // Normaliza o texto para minúsculas e remove acentos para facilitar a pesquisa
     const text = userInput.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-    // 1. Saudações
     if (text.includes('ola') || text.includes('bom dia') || text.includes('boa tarde') || text.includes('boa noite') || text.includes('boas')) {
       return "Olá! 😊 Bem-vindo à QuickPass. O que procuras hoje? Bilhetes, informações de conta, pagamentos ou ajuda com um evento?";
     }
     
-    // 2. Compras e Bilhetes Genéricos
     if (text.includes('bilhete') || text.includes('comprar') || text.includes('preco') || text.includes('adquirir') || text.includes('custo')) {
       return "Para comprares bilhetes, basta ires à nossa secção de Eventos, escolheres o espetáculo e clicares em 'Comprar'. O bilhete fica logo associado à tua conta! Precisas de ajuda com algum evento específico?";
     }
 
-    // 3. Pagamentos e Faturas
     if (text.includes('pagamento') || text.includes('pagar') || text.includes('mbway') || text.includes('cartao') || text.includes('multibanco')) {
       return "Aceitamos os métodos de pagamento mais seguros: MB WAY, Cartão de Crédito/Débito (Visa, Mastercard) e Referência Multibanco. O processo é 100% encriptado! 🔒";
     }
@@ -44,32 +39,26 @@ export default function Chatbot() {
       return "A tua fatura com NIF é gerada automaticamente após a compra. Podes descarregá-la a qualquer momento na tua área de cliente, na secção 'Histórico de Compras'.";
     }
 
-    // 4. QR Code e Entrada nos Eventos
     if (text.includes('qr code') || text.includes('qr') || text.includes('entrada') || text.includes('entrar') || text.includes('porta')) {
       return "O teu QR Code é a tua chave! 📱 No dia do evento, basta fazeres login, ires a 'Os Meus Bilhetes' e abrires o evento. Mostra o ecrã à porta e já está. Nada de imprimir papéis!";
     }
 
-    // 5. Reembolsos e Cancelamentos
     if (text.includes('reembolso') || text.includes('cancelado') || text.includes('devolver') || text.includes('devolucao')) {
       return "Se um evento for cancelado ou adiado, a QuickPass processa o reembolso de forma automática para o mesmo método de pagamento utilizado, num prazo máximo de 14 dias úteis.";
     }
 
-    // 6. Problemas de Conta / Password
     if (text.includes('password') || text.includes('passe') || text.includes('senha') || text.includes('esqueci') || text.includes('login')) {
       return "Esqueceste-te da palavra-passe? Acontece aos melhores! Vai à nossa página de Login e clica em 'Esqueceu-se da palavra-passe?' para te enviarmos um link seguro de recuperação.";
     }
 
-    // 7. Contactos e Suporte Humano
     if (text.includes('contacto') || text.includes('contactos') || text.includes('falar') || text.includes('ligar') || text.includes('email') || text.includes('telefone') || text.includes('humano')) {
       return "Podes falar com a nossa equipa humana! 👨‍💻 Envia-nos um email para suporte@quickpass.pt ou liga para o +351 210 000 000. Estamos disponíveis das 9h às 18h.";
     }
 
-    // 8. Idades e Crianças
     if (text.includes('idade') || text.includes('crianca') || text.includes('menor') || text.includes('bebe')) {
       return "A classificação etária varia de evento para evento. Recomendamos que verifiques as informações específicas na página do evento que queres assistir. Por norma, crianças até aos 3 anos não pagam bilhete em recintos abertos, mas confirma sempre!";
     }
 
-    // 9. EVENTOS ESPECÍFICOS (Lendo a mente do utilizador)
     if (text.includes('travis') || text.includes('scott') || text.includes('utopia') || text.includes('rap')) {
       return "O concerto do Travis Scott vai ser épico! 🔥 Vai acontecer no dia 14 de Fevereiro na Altice Arena. Corre para a nossa página de eventos porque os bilhetes estão a voar (a partir de 90€)!";
     }
@@ -89,12 +78,10 @@ export default function Chatbot() {
       return "Os Masters of Tennis vão trazer os grandes nomes mundiais à Quinta do Lago no dia 1 de Fevereiro. É um evento de luxo com bilhetes a partir de 35€.";
     }
 
-    // 10. Agradecimentos
     if (text.includes('obrigado') || text.includes('obrigada') || text.includes('valeu') || text.includes('top')) {
       return "Ora essa, é para isso que cá estou! Se precisares de mais alguma coisa, avisa. Diverte-te muito com a QuickPass! 🎉";
     }
 
-    // Resposta padrão caso ele não saiba o que responder
     return "Hum, não tenho a certeza se percebi tudo. 🤔 Consigo ajudar-te com compras, pagamentos, faturas, o uso do QR Code, reembolsos, eventos específicos ou recuperação de conta. Podes reformular a pergunta?";
   };
 

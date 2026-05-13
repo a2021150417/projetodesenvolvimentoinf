@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, ArrowRight, Ticket, ShieldCheck, ChevronLeft, ShoppingBag } from 'lucide-react';
 import { useCart } from './CartContext';
 import Navbar from "./Navbar";
+import Footer from "./Footer";
 export default function Carrinho() {
   const { cart, removeFromCart } = useCart();
   const navigate = useNavigate();
@@ -90,6 +91,7 @@ export default function Carrinho() {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

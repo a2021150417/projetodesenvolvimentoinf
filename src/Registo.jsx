@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function Registo() {
-  // --- ESTADOS PARA GUARDAR OS DADOS DO FORMULÁRIO ---
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -11,7 +10,6 @@ export default function Registo() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // --- FUNÇÃO QUE ENVIA PARA A BASE DE DADOS ---
   const handleRegisto = async (e) => {
     e.preventDefault();
     setErro('');
@@ -47,7 +45,6 @@ export default function Registo() {
   return (
     <div className="font-sans min-h-screen grid grid-cols-1 lg:grid-cols-2 bg-slate-100">
       
-      {/* --- PAINEL ESQUERDO: Imagem e Marca --- */}
       <div className="relative overflow-hidden bg-gray-900 order-last lg:order-first lg:sticky lg:top-0 lg:h-screen">
         <div 
           className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 hover:scale-110"
@@ -77,7 +74,6 @@ export default function Registo() {
         </div>
       </div>
 
-      {/* --- PAINEL DIREITO: Formulário de Registo --- */}
       <div className="flex items-center justify-center p-8 lg:p-16 xl:p-24 bg-slate-100">
         <div className="bg-white p-12 rounded-3xl shadow-2xl shadow-gray-200 border border-gray-100 w-full max-w-lg">
           
@@ -88,14 +84,12 @@ export default function Registo() {
           
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-8 text-gray-900 tracking-tight">Cria a tua conta!</h2>
           
-          {/* AVISO DE ERRO */}
           {erro && (
             <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-semibold mb-6 border border-red-100">
               {erro}
             </div>
           )}
           
-          {/* FORMULÁRIO COM O EVENTO ONSUBMIT */}
           <form onSubmit={handleRegisto} className="space-y-6">
             
             <div>

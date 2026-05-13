@@ -17,6 +17,9 @@ import AdminDashboard from './AdminDashboard';
 import LeitorQR from './LeitorQR';
 import RecuperarPassword from './RecuperarPassword';
 import ResetPassword from './ResetPassword';
+import Termos from './Termos';
+import Privacidade from './Privacidade';
+import Cookies from './Cookies';
 
 function App() {
   return (
@@ -39,6 +42,9 @@ function App() {
             <Route path="/leitor-qr" element={<LeitorQR />} />
             <Route path="/recuperar-password" element={<RecuperarPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
+            <Route path="/termos" element={<Termos />} />
+            <Route path="/privacidade" element={<Privacidade />} />
+            <Route path="/cookies" element={<Cookies />} />
           </Routes>
           <Chatbot />
         </CartProvider>

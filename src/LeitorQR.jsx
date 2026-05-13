@@ -15,16 +15,14 @@ export default function LeitorQR() {
   const navigate = useNavigate();
   const user = getUserFromToken();
 
-  const [estado, setEstado] = useState("idle"); // idle | scanning | success | error
+  const [estado, setEstado] = useState("idle");
   const [resultado, setResultado] = useState(null);
   const [mensagem, setMensagem] = useState("");
-  const scannerRef = useRef(null);
   const html5QrcodeRef = useRef(null);
 
   useEffect(() => {
     if (!user) { navigate("/login"); return; }
     return () => {
-      // Parar câmara ao sair da página
       if (html5QrcodeRef.current) {
         html5QrcodeRef.current.stop().catch(() => {});
       }
@@ -36,23 +34,21 @@ export default function LeitorQR() {
     setResultado(null);
     setMensagem("");
 
-    // Aguardar DOM estar pronto
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
     const html5Qrcode = new Html5Qrcode("qr-reader");
     html5QrcodeRef.current = html5Qrcode;
 
     try {
       await html5Qrcode.start(
-        { facingMode: "environment" }, // câmara traseira
+        { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         async (codigoQR) => {
-          // QR code detetado!
           await html5Qrcode.stop();
           setEstado("loading");
           await validarBilhete(codigoQR);
         },
-        () => {} // erro de leitura (ignora frames sem QR)
+        () => {}
       );
     } catch (err) {
       setEstado("error");
@@ -69,44 +65,28 @@ export default function LeitorQR() {
 
   const validarBilhete = async (codigoQR) => {
     try {
-      // Buscar todos os bilhetes e procurar o código QR
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/bilhetes`);
-      const bilhetes = await res.json();
 
-      const bilhete = bilhetes.find((b) => b.codigo_qr === codigoQR);
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/bilhetes/validar/${encodeURIComponent(codigoQR)}`,
+        { method: "PUT" }
+      );
 
-      if (!bilhete) {
+      const dados = await res.json();
+
+      if (!res.ok) {
         setEstado("error");
-        setMensagem("Bilhete não encontrado ou inválido.");
+        setMensagem(dados.erro || "Bilhete inválido.");
+        setResultado(dados.bilhete || null);
         return;
       }
-
-      if (bilhete.estado_bilhete === "usado") {
-        setEstado("error");
-        setMensagem("Este bilhete já foi utilizado.");
-        setResultado(bilhete);
-        return;
-      }
-
-      if (bilhete.estado_bilhete === "cancelado") {
-        setEstado("error");
-        setMensagem("Este bilhete foi cancelado.");
-        setResultado(bilhete);
-        return;
-      }
-
-      // Marcar bilhete como usado
-      await fetch(`${import.meta.env.VITE_API_URL}/api/bilhetes/${bilhete.id_bilhete}/usar`, {
-        method: "PUT",
-      });
 
       setEstado("success");
-      setMensagem("Bilhete válido! Entrada autorizada.");
-      setResultado(bilhete);
+      setMensagem(dados.mensagem || "Bilhete válido! Entrada autorizada.");
+      setResultado(dados.bilhete);
 
     } catch (err) {
       setEstado("error");
-      setMensagem("Erro ao validar o bilhete. Tenta novamente.");
+      setMensagem("Erro de ligação ao servidor. Tenta novamente.");
     }
   };
 
@@ -118,7 +98,6 @@ export default function LeitorQR() {
 
   return (
     <div className="min-h-screen bg-gray-950 font-sans flex flex-col">
-      {/* Navbar */}
       <nav className="w-full bg-indigo-950 text-white flex justify-between items-center px-6 py-4 sticky top-0 z-50 border-b border-indigo-900">
         <Link to="/admin" className="flex items-center gap-2 text-white/80 hover:text-white font-bold text-sm">
           <ChevronLeft className="w-4 h-4" /> Painel Admin
@@ -129,7 +108,6 @@ export default function LeitorQR() {
 
       <main className="flex-1 flex flex-col items-center justify-start px-4 py-8 gap-6">
 
-        {/* Estado: IDLE */}
         {estado === "idle" && (
           <div className="flex flex-col items-center gap-6 w-full max-w-sm">
             <div className="w-24 h-24 bg-indigo-900 rounded-full flex items-center justify-center">
@@ -148,7 +126,6 @@ export default function LeitorQR() {
           </div>
         )}
 
-        {/* Scanner ativo */}
         {estado === "scanning" && (
           <div className="flex flex-col items-center gap-4 w-full max-w-sm">
             <p className="text-white font-bold text-sm">A ler QR Code...</p>
@@ -166,7 +143,6 @@ export default function LeitorQR() {
           </div>
         )}
 
-        {/* Loading */}
         {estado === "loading" && (
           <div className="flex flex-col items-center gap-4">
             <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -174,7 +150,6 @@ export default function LeitorQR() {
           </div>
         )}
 
-        {/* Sucesso */}
         {estado === "success" && (
           <div className="flex flex-col items-center gap-4 w-full max-w-sm">
             <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-900/50">
@@ -224,7 +199,6 @@ export default function LeitorQR() {
           </div>
         )}
 
-        {/* Erro */}
         {estado === "error" && (
           <div className="flex flex-col items-center gap-4 w-full max-w-sm">
             <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center shadow-lg shadow-red-900/50">
@@ -239,7 +213,6 @@ export default function LeitorQR() {
               <div className="w-full bg-gray-900 rounded-2xl p-5 border border-red-900 space-y-2">
                 <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Código</p>
                 <p className="text-white font-mono text-sm break-all">{resultado.codigo_qr}</p>
-                <p className="text-xs text-red-400 font-bold capitalize">Estado: {resultado.estado_bilhete}</p>
               </div>
             )}
 

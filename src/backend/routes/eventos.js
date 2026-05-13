@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-// GET /api/eventos — listar todos
 router.get("/", async (req, res) => {
   try {
     const resultado = await pool.query(
@@ -14,7 +13,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET /api/eventos/:id — obter um evento
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -31,7 +29,6 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/eventos — criar evento
 router.post("/", async (req, res) => {
   try {
     const { titulo, descricao, data_hora, preco, stock_disponivel } = req.body;
@@ -45,7 +42,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /api/eventos/:id — atualizar evento
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -60,7 +56,6 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/eventos/:id — apagar evento
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;

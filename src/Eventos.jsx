@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search, Heart, MapPin, Calendar, Ticket, Flame, Sparkles, ChevronRight, X, SlidersHorizontal, Clock,
 } from "lucide-react";
 import { useFavorites } from "./FavoritesContext";
+
 const CATEGORIES = ["Música", "Desporto", "Teatro", "Comédia"];
 const DISTRICTS = ["Coimbra", "Porto", "Lisboa", "Leiria"];
 const SORT_OPTIONS = [
@@ -17,7 +18,7 @@ function formatDate(iso) {
   return d.toLocaleDateString("pt-PT", { day: "numeric", month: "numeric", year: "2-digit" });
 }
 import Navbar from "./Navbar";
-
+import Footer from "./Footer";
 function EventCard({ event }) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const fav = isFavorite(event.id);
@@ -79,6 +80,7 @@ export default function Eventos() {
   const [showContactModal, setShowContactModal] = useState(false);
   const { hash } = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     if (hash) {
@@ -89,6 +91,11 @@ export default function Eventos() {
     }
   }, [hash]);
 
+  useEffect(() => {
+    const cat = searchParams.get("categoria");
+    if (cat) setSelectedCategories([cat]);
+  }, []);
+
   const toggle = (setter, value) => {
     setter((prev) => prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]);
   };
@@ -97,7 +104,6 @@ export default function Eventos() {
     fetch(`${import.meta.env.VITE_API_URL}/api/eventos`)
       .then((r) => r.json())
       .then((dados) => {
-        // Mapear campos da BD para o formato do frontend
         const mapped = dados.map((e) => ({
           id: e.id_evento,
           title: e.titulo,
@@ -281,33 +287,8 @@ export default function Eventos() {
         </div>
       </main>
 
-      <footer className="bg-gray-950 text-gray-400 py-16 px-8 border-t border-gray-900 mt-auto">
-        <div className="max-w-screen-2xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 text-sm">
-          <div className="lg:col-span-2">
-            <div className="text-xl font-bold flex items-center gap-2 mb-6 text-white"><span className="bg-white text-black p-1 rounded text-sm">QP</span> QuickPass</div>
-            <p className="text-gray-400 text-sm max-w-sm leading-relaxed mb-6">A tua plataforma de bilhética 100% digital. Rapidez, segurança e sustentabilidade no acesso aos teus eventos favoritos.</p>
-          </div>
-          {footerColumns.map((col, idx) => (
-            <div key={idx}>
-              <h4 className="font-bold mb-6 text-white tracking-wider uppercase text-xs">{col.title}</h4>
-              <ul className="space-y-3">
-                {col.links.map((link, lIdx) => (
-                  <li key={lIdx}>
-                    {link.action ? (
-                      <button onClick={link.action} className="hover:text-white transition-colors">{link.label}</button>
-                    ) : (
-                      <Link to={link.to} className="hover:text-white transition-colors">{link.label}</Link>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-        <div className="max-w-screen-2xl mx-auto border-t border-gray-800/50 mt-16 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-gray-600">© {new Date().getFullYear()} QuickPass Portugal. Todos os direitos reservados.</p>
-        </div>
-      </footer>
+      
+      <Footer />
 
       {showContactModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">

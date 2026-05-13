@@ -11,7 +11,7 @@ function getUserFromToken() {
 }
 
 const getQrUrl = (texto) =>
-  `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(texto)}`;
+  `https://api.qrserver.com/v1/create-qr-code/?size=300x300&ecc=H&data=${encodeURIComponent(texto)}`;
 
 export default function BilhetesAtivos() {
   const navigate = useNavigate();
@@ -26,11 +26,12 @@ export default function BilhetesAtivos() {
   useEffect(() => {
     window.scrollTo(0, 0);
     if (!user) { navigate("/login"); return; }
+
     fetch(`${import.meta.env.VITE_API_URL}/api/bilhetes/utilizador/${user.id}`)
       .then((r) => r.json())
       .then((dados) => {
         const ativos = Array.isArray(dados)
-          ? dados.filter((b) => !b.estado_bilhete || b.estado_bilhete === "ativo")
+          ? dados.filter((b) => b.estado_bilhete === 2)
           : [];
         setBilhetes(ativos);
         setLoading(false);
@@ -44,6 +45,8 @@ export default function BilhetesAtivos() {
     localStorage.removeItem("userFoto");
     navigate("/");
   };
+
+  const bilheteAberto = bilhetes.find((b) => b.id_bilhete === qrAberto);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
@@ -132,7 +135,7 @@ export default function BilhetesAtivos() {
                     </div>
                   </div>
                   <div className="p-6 sm:p-8 w-full sm:w-48 bg-slate-50 flex flex-col items-center justify-center text-center">
-                    <div className="w-24 h-24 bg-white p-2 border border-gray-200 rounded-xl shadow-sm mb-3">
+                    <div className="w-28 h-28 bg-white p-2 border border-gray-200 rounded-xl shadow-sm mb-3">
                       <img src={getQrUrl(b.codigo_qr)} alt="QR Code" className="w-full h-full" />
                     </div>
                     <p className="text-[10px] text-gray-500 font-semibold">#{b.id_bilhete}</p>
@@ -152,15 +155,43 @@ export default function BilhetesAtivos() {
         </main>
       </div>
 
-      {qrAberto && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center" onClick={() => setQrAberto(null)}>
-          <div className="bg-white rounded-3xl p-8 flex flex-col items-center gap-4 max-w-sm mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-gray-900 text-lg">O teu bilhete</h3>
-            <img src={getQrUrl(bilhetes.find((b) => b.id_bilhete === qrAberto)?.codigo_qr)} alt="QR Code" className="w-52 h-52" />
-            <p className="text-xs text-gray-400 font-mono text-center break-all">
-              {bilhetes.find((b) => b.id_bilhete === qrAberto)?.codigo_qr}
-            </p>
-            <button onClick={() => setQrAberto(null)} className="px-6 py-2.5 bg-black text-white font-bold rounded-full text-sm">Fechar</button>
+      {qrAberto && bilheteAberto && (
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center"
+          onClick={() => setQrAberto(null)}
+        >
+          <div
+            className="bg-white rounded-3xl p-8 flex flex-col items-center gap-4 max-w-sm mx-4 w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-gray-900 text-lg">
+              {bilheteAberto.titulo_evento || `Evento #${bilheteAberto.id_evento}`}
+            </h3>
+            <div className="bg-white p-3 border border-gray-200 rounded-2xl shadow-inner">
+              <img
+                src={getQrUrl(bilheteAberto.codigo_qr)}
+                alt="QR Code"
+                className="w-64 h-64"
+              />
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Bilhete</p>
+              <p className="text-xs text-gray-500 font-mono break-all">{bilheteAberto.codigo_qr}</p>
+            </div>
+            {bilheteAberto.data_hora && (
+              <p className="text-sm text-gray-500 font-medium flex items-center gap-1.5">
+                <Calendar className="w-4 h-4" />
+                {new Date(bilheteAberto.data_hora).toLocaleDateString("pt-PT", {
+                  day: "numeric", month: "long", year: "numeric",
+                })}
+              </p>
+            )}
+            <button
+              onClick={() => setQrAberto(null)}
+              className="px-6 py-2.5 bg-black text-white font-bold rounded-full text-sm w-full"
+            >
+              Fechar
+            </button>
           </div>
         </div>
       )}

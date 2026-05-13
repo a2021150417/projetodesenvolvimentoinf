@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import Navbar from "./Navbar";
+import Footer from "./Footer";
+
 
 function getUserFromToken() {
   try {
@@ -27,7 +29,6 @@ export default function Home() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
 
-  // Estados comentários
   const [comentarios, setComentarios] = useState([]);
   const [reviewEstrelas, setReviewEstrelas] = useState(0);
   const [reviewHover, setReviewHover] = useState(0);
@@ -36,7 +37,6 @@ export default function Home() {
   const [reviewEnviando, setReviewEnviando] = useState(false);
   const [reviewSucesso, setReviewSucesso] = useState(false);
 
-  // Estados da pesquisa
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
 
@@ -110,7 +110,6 @@ export default function Home() {
       
       <Navbar />
 
-            {/* HERO SECTION */}
       <section className="relative w-full pb-32 pt-48 min-h-[600px] flex flex-col z-20">
         <div className="absolute inset-0 w-full h-full overflow-hidden z-0">
           {bgImages.map((img, index) => (
@@ -347,45 +346,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="bg-gray-950 text-gray-400 py-16 px-8 border-t border-gray-900 mt-auto">
-        <div className="max-w-screen-2xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 text-sm">
-          <div className="lg:col-span-2">
-            <div className="text-xl font-bold flex items-center gap-2 mb-6 text-white"><span className="bg-white text-black p-1 rounded text-sm">QP</span> QuickPass</div>
-            <p className="text-gray-400 text-sm max-w-sm leading-relaxed mb-6">A tua plataforma de bilhética 100% digital. Rapidez, segurança e sustentabilidade no acesso aos teus eventos favoritos.</p>
-          </div>
-          <div>
-            <h4 className="font-bold mb-6 text-white tracking-wider uppercase text-xs">Categorias</h4>
-            <ul className="space-y-3">
-              <li><a href="#" className="hover:text-white transition-colors">Música & Festivais</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Desporto</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Teatro & Arte</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Comédia</a></li>
-            </ul>
-          </div>
-          <div>
-            <Link to="/suporte" className="block font-bold mb-6 text-white tracking-wider uppercase text-xs hover:text-gray-300 hover:underline underline-offset-4 transition-all w-max cursor-pointer">Suporte</Link>
-            <ul className="space-y-3">
-              <li><Link to="/suporte#ajuda" className="hover:text-white transition-colors">Centro de Ajuda</Link></li>
-              <li><Link to="/suporte#qr" className="hover:text-white transition-colors">Como funciona o QR</Link></li>
-              <li><button onClick={() => setShowContactModal(true)} className="hover:text-white transition-colors">Contactos</button></li>
-              <li><Link to="/suporte#faq" className="hover:text-white transition-colors">FAQ</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold mb-6 text-white tracking-wider uppercase text-xs">Legal</h4>
-            <ul className="space-y-3">
-              <li><a href="#" className="hover:text-white transition-colors">Termos e Condições</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Política de Privacidade</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Gestão de Cookies</a></li>
-            </ul>
-          </div>
-        </div>
-        <div className="max-w-screen-2xl mx-auto border-t border-gray-800/50 mt-16 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-gray-600">© {new Date().getFullYear()} QuickPass Portugal. Todos os direitos reservados.</p>
-        </div>
-      </footer>
-
-      {/* --- POP-UPS --- */}
+     
       {showReviewModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setShowReviewModal(false)}></div>
@@ -455,7 +416,7 @@ export default function Home() {
           </div>
         </div>
       )}
-
+        <Footer />
       {showContactModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setShowContactModal(false)}></div>

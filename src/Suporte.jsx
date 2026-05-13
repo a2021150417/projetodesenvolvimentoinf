@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Navbar from "./Navbar";
+import Footer from "./Footer";
 export default function Suporte() {
   const [openFaq, setOpenFaq] = useState(null);
   const [showContactModal, setShowContactModal] = useState(false);
   const { hash } = useLocation();
 
-  // --- LÓGICA DE AUTENTICAÇÃO ADICIONADA ---
   const token = localStorage.getItem('token');
   const userName = localStorage.getItem('userName');
 
@@ -61,7 +61,6 @@ export default function Suporte() {
   return (
     <div className="font-sans text-gray-900 bg-white min-h-screen flex flex-col">
       
-      {/* --- NAVBAR INTELIGENTE --- */}
       <nav className="fixed top-0 w-full z-50 bg-gray-950/90 backdrop-blur-md border-b border-white/10 shadow-sm flex justify-between items-center px-8 py-4 text-white">
         <Link to="/" className="text-xl font-bold flex items-center gap-2">
           <span className="bg-white text-black p-1 rounded text-sm">QP</span> QuickPass
@@ -88,7 +87,6 @@ export default function Suporte() {
         </div>
       </nav>
 
-      {/* Adicionado o id="ajuda" ao topo da página */}
       <section id="ajuda" className="bg-slate-50 pt-36 pb-20 px-8 relative overflow-hidden scroll-mt-20">
         <div className="max-w-screen-xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12 relative z-10 text-center md:text-left">
           <div className="w-full md:w-1/2">
@@ -155,7 +153,6 @@ export default function Suporte() {
           </div>
 
           <div>
-            {/* Adicionado o id="qr" ao cartão do guia QR */}
             <div id="qr" className="bg-slate-50 p-8 rounded-3xl border border-gray-100 shadow-sm sticky top-32 scroll-mt-32">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center shadow-md">
@@ -196,7 +193,6 @@ export default function Suporte() {
         </div>
       </section>
 
-      {/* NOVO POP-UP INFO DE CONTACTOS */}
       {showContactModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setShowContactModal(false)}></div>
@@ -239,7 +235,7 @@ export default function Suporte() {
           </div>
         </div>
       )}
-
+<Footer />
     </div>
   );
 }

@@ -10,12 +10,12 @@ function getUserFromToken() {
   } catch { return null; }
 }
 
-const getEstadoBadge = (estado) => {
-  switch (estado) {
-    case "ativo": return "bg-green-100 text-green-700";
-    case "usado": return "bg-gray-100 text-gray-600";
-    case "cancelado": return "bg-red-100 text-red-600";
-    default: return "bg-green-100 text-green-700";
+const getEstadoInfo = (estado) => {
+  switch (Number(estado)) {
+    case 2: return { label: "Ativo",     classes: "bg-green-100 text-green-700" };
+    case 1: return { label: "Utilizado", classes: "bg-gray-100 text-gray-500"  };
+    case 0: return { label: "Cancelado", classes: "bg-red-100 text-red-600"    };
+    default: return { label: "Ativo",    classes: "bg-green-100 text-green-700" };
   }
 };
 
@@ -144,30 +144,33 @@ export default function HistoricoCompras() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {comprasFiltradas.map((c) => (
-                      <tr key={c.id_bilhete} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-gray-900">{c.titulo_evento || `Evento #${c.id_evento}`}</div>
-                          <div className="text-xs text-gray-400 font-mono mt-0.5">{c.codigo_qr}</div>
-                        </td>
-                        <td className="px-6 py-4 text-gray-600">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                            {c.data_compra
-                              ? new Date(c.data_compra).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" })
-                              : "-"}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 font-bold text-gray-900">
-                          {c.preco ? `${c.preco}€` : "-"}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${getEstadoBadge(c.estado_bilhete)}`}>
-                            {c.estado_bilhete || "ativo"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {comprasFiltradas.map((c) => {
+                      const { label, classes } = getEstadoInfo(c.estado_bilhete);
+                      return (
+                        <tr key={c.id_bilhete} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-gray-900">{c.titulo_evento || `Evento #${c.id_evento}`}</div>
+                            <div className="text-xs text-gray-400 font-mono mt-0.5">{c.codigo_qr}</div>
+                          </td>
+                          <td className="px-6 py-4 text-gray-600">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                              {c.data_compra
+                                ? new Date(c.data_compra).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" })
+                                : "-"}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 font-bold text-gray-900">
+                            {c.preco != null ? `${Number(c.preco).toFixed(2)}€` : "—"}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${classes}`}>
+                              {label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

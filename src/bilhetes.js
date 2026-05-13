@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 
-// GET /api/bilhetes — listar todos
 router.get("/", async (req, res) => {
   try {
     const resultado = await pool.query(`
@@ -18,7 +17,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET /api/bilhetes/utilizador/:id — bilhetes de um utilizador
 router.get("/utilizador/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -35,7 +33,6 @@ router.get("/utilizador/:id", async (req, res) => {
   }
 });
 
-// POST /api/bilhetes — comprar bilhete
 router.post("/", async (req, res) => {
   const client = await pool.connect();
   try {
@@ -43,7 +40,6 @@ router.post("/", async (req, res) => {
 
     await client.query("BEGIN");
 
-    // Verificar stock disponível
     const evento = await client.query(
       "SELECT stock_disponivel FROM Eventos WHERE id_evento = $1 FOR UPDATE",
       [id_evento]
@@ -57,16 +53,13 @@ router.post("/", async (req, res) => {
       throw new Error("Sem bilhetes disponíveis");
     }
 
-    // Gerar código QR simples
     const codigo_qr = `QR-${id_evento}-${id_utilizador}-${Date.now()}`;
 
-    // Criar bilhete
     const bilhete = await client.query(
       "INSERT INTO Bilhetes (id_utilizador, id_evento, codigo_qr) VALUES ($1, $2, $3) RETURNING *",
       [id_utilizador, id_evento, codigo_qr]
     );
 
-    // Decrementar stock
     await client.query(
       "UPDATE Eventos SET stock_disponivel = stock_disponivel - 1 WHERE id_evento = $1",
       [id_evento]
@@ -83,7 +76,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /api/bilhetes/:id/usar — marcar bilhete como usado
 router.put("/:id/usar", async (req, res) => {
   try {
     const { id } = req.params;
@@ -100,7 +92,6 @@ router.put("/:id/usar", async (req, res) => {
   }
 });
 
-// DELETE /api/bilhetes/:id — cancelar bilhete
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;

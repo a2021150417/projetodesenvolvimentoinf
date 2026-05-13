@@ -3,7 +3,6 @@ const router = express.Router();
 const pool = require("../db");
 const { enviarBilhete } = require("../email");
 
-// GET /api/bilhetes — listar todos
 router.get("/", async (req, res) => {
   try {
     const resultado = await pool.query(`
@@ -19,14 +18,14 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET /api/bilhetes/utilizador/:id — bilhetes de um utilizador
 router.get("/utilizador/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const resultado = await pool.query(`
-      SELECT b.*, e.titulo AS titulo_evento, e.data_hora, e.preco
+      SELECT b.id_bilhete, b.id_utilizador, b.id_evento, b.codigo_qr, b.estado_bilhete, b.data_compra,
+             e.titulo AS titulo_evento, e.data_hora, e.preco
       FROM Bilhetes b
-      JOIN Eventos e ON b.id_evento = e.id_evento
+      LEFT JOIN Eventos e ON b.id_evento = e.id_evento
       WHERE b.id_utilizador = $1
       ORDER BY b.data_compra DESC
     `, [id]);
@@ -36,7 +35,6 @@ router.get("/utilizador/:id", async (req, res) => {
   }
 });
 
-// POST /api/bilhetes — comprar bilhete
 router.post("/", async (req, res) => {
   const client = await pool.connect();
   try {
@@ -44,30 +42,27 @@ router.post("/", async (req, res) => {
 
     await client.query("BEGIN");
 
-    // Verificar stock disponível
     const evento = await client.query(
       "SELECT stock_disponivel FROM Eventos WHERE id_evento = $1 FOR UPDATE",
       [id_evento]
     );
 
-    if (evento.rows.length === 0) {
-      throw new Error("Evento não encontrado");
-    }
+    if (evento.rows.length === 0) throw new Error("Evento não encontrado");
+    if (evento.rows[0].stock_disponivel <= 0) throw new Error("Sem bilhetes disponíveis");
 
-    if (evento.rows[0].stock_disponivel <= 0) {
-      throw new Error("Sem bilhetes disponíveis");
-    }
+   
+    const identificador = id_utilizador
+      ? `U${id_utilizador}`
+      : email
+      ? email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "").toUpperCase()
+      : "GUEST";
+    const codigo_qr = `QPEV${id_evento}${identificador}TS${Date.now()}`;
 
-    // Gerar código QR simples
-    const codigo_qr = `QR-${id_evento}-${id_utilizador}-${Date.now()}`;
-
-    // Criar bilhete
     const bilhete = await client.query(
-      "INSERT INTO Bilhetes (id_utilizador, id_evento, codigo_qr) VALUES ($1, $2, $3) RETURNING *",
-      [id_utilizador, id_evento, codigo_qr]
+      "INSERT INTO Bilhetes (id_utilizador, id_evento, codigo_qr, estado_bilhete) VALUES ($1, $2, $3, 2) RETURNING *",
+      [id_utilizador || null, id_evento, codigo_qr]
     );
 
-    // Decrementar stock
     await client.query(
       "UPDATE Eventos SET stock_disponivel = stock_disponivel - 1 WHERE id_evento = $1",
       [id_evento]
@@ -75,10 +70,10 @@ router.post("/", async (req, res) => {
 
     await client.query("COMMIT");
 
-    // Enviar email com bilhete
     try {
       const eventoInfo = await pool.query(
-        "SELECT titulo, data_hora, morada FROM Eventos WHERE id_evento = $1", [id_evento]
+        "SELECT titulo, data_hora, morada, preco FROM Eventos WHERE id_evento = $1",
+        [id_evento]
       );
       if (email && eventoInfo.rows.length > 0) {
         const e = eventoInfo.rows[0];
@@ -86,14 +81,15 @@ router.post("/", async (req, res) => {
           para: email,
           nome: nome || "Utilizador",
           evento: e.titulo,
-          data: e.data_hora ? new Date(e.data_hora).toLocaleDateString("pt-PT", { day: "numeric", month: "long", year: "numeric" }) : null,
+          data: e.data_hora
+            ? new Date(e.data_hora).toLocaleDateString("pt-PT", { day: "numeric", month: "long", year: "numeric" })
+            : null,
           local: e.morada || null,
           codigoQR: bilhete.rows[0].codigo_qr,
-          preco: null,
+          preco: e.preco ? `${Number(e.preco).toFixed(2)}` : null,
         }).catch(() => {});
       }
     } catch {}
-
 
     res.status(201).json(bilhete.rows[0]);
 
@@ -105,12 +101,49 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /api/bilhetes/:id/usar — marcar bilhete como usado
+router.put("/validar/:codigo_qr", async (req, res) => {
+  try {
+    const { codigo_qr } = req.params;
+
+    const bilheteAtual = await pool.query(
+      "SELECT * FROM Bilhetes WHERE codigo_qr = $1",
+      [codigo_qr]
+    );
+
+    if (bilheteAtual.rows.length === 0) {
+      return res.status(404).json({ erro: "Bilhete não encontrado. QR Code inválido." });
+    }
+
+    const bilhete = bilheteAtual.rows[0];
+
+    if (bilhete.estado_bilhete === 1) {
+      return res.status(400).json({ erro: "Este bilhete já foi utilizado anteriormente." });
+    }
+
+    if (bilhete.estado_bilhete !== 2 && bilhete.estado_bilhete !== null) {
+      return res.status(400).json({ erro: "Bilhete em estado inválido." });
+    }
+
+    const resultado = await pool.query(
+      "UPDATE Bilhetes SET estado_bilhete = 1 WHERE codigo_qr = $1 AND (estado_bilhete = 2 OR estado_bilhete IS NULL) RETURNING *",
+      [codigo_qr]
+    );
+
+    res.json({
+      mensagem: "Bilhete validado com sucesso! Entrada permitida.",
+      bilhete: resultado.rows[0],
+    });
+  } catch (err) {
+    console.error("Erro ao validar bilhete:", err.message);
+    res.status(500).json({ erro: "Erro interno ao processar a validação." });
+  }
+});
+
 router.put("/:id/usar", async (req, res) => {
   try {
     const { id } = req.params;
     const resultado = await pool.query(
-      "UPDATE Bilhetes SET estado_bilhete = 'usado' WHERE id_bilhete = $1 RETURNING *",
+      "UPDATE Bilhetes SET estado_bilhete = 1 WHERE id_bilhete = $1 RETURNING *",
       [id]
     );
     if (resultado.rows.length === 0) {
@@ -122,7 +155,6 @@ router.put("/:id/usar", async (req, res) => {
   }
 });
 
-// DELETE /api/bilhetes/:id — cancelar bilhete
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
