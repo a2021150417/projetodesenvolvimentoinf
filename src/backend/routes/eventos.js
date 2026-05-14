@@ -4,9 +4,24 @@ const pool = require("../db");
 
 router.get("/", async (req, res) => {
   try {
-    const resultado = await pool.query(
-      "SELECT * FROM Eventos ORDER BY data_hora ASC"
-    );
+    const { search } = req.query;
+
+    let resultado;
+    if (search && search.trim() !== "") {
+      resultado = await pool.query(
+        `SELECT * FROM Eventos 
+         WHERE titulo ILIKE $1 
+            OR categoria ILIKE $1 
+            OR distrito ILIKE $1
+         ORDER BY data_hora ASC`,
+        [`%${search.trim()}%`]
+      );
+    } else {
+      resultado = await pool.query(
+        "SELECT * FROM Eventos ORDER BY data_hora ASC"
+      );
+    }
+
     res.json(resultado.rows);
   } catch (err) {
     res.status(500).json({ erro: err.message });
