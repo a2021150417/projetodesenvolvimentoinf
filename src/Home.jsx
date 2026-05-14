@@ -84,27 +84,38 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [currentBg]);
 
-  const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
+  const handleSearchChange = async (e) => {
+  const query = e.target.value;
+  setSearchQuery(query);
 
-    if (query.trim() === "") {
+  if (query.trim() === "") {
+    setSearchResults([]);
+  } else {
+    try {
+      const res = await fetch(`/api/eventos?search=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      setSearchResults(Array.isArray(data) ? data.slice(0, 4) : []);
+    } catch {
       setSearchResults([]);
-    } else {
-      const filtered = EVENTS.filter(event =>
-        event.title.toLowerCase().includes(query.toLowerCase()) ||
-        event.district.toLowerCase().includes(query.toLowerCase()) ||
-        event.category.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 4);
-      setSearchResults(filtered);
     }
-  };
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
+  }
+};
+ const handleSearchSubmit = (e) => {
+  e.preventDefault();
+  if (searchQuery.trim()) {
+    navigate(`/eventos?search=${encodeURIComponent(searchQuery)}`);
+  } else {
     navigate('/eventos');
-  };
-
+  }
+};
+const formatDate = (dateStr) => {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("pt-PT", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+};
   return (
     <div className="font-sans text-gray-900 bg-white min-h-screen flex flex-col">
       
@@ -151,21 +162,21 @@ export default function Home() {
               <div className="absolute top-full left-4 right-4 mt-3 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden z-[100] text-left animate-in fade-in slide-in-from-top-4 duration-200">
                 {searchResults.length > 0 ? (
                   <div className="flex flex-col">
-                    {searchResults.map((event) => (
-                      <Link 
-                        key={event.id} 
-                        to={`/eventos/${event.id}`}
-                        className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors border-b border-gray-50 last:border-0"
-                      >
-                        <img src={event.image} alt={event.title} className="w-14 h-14 rounded-xl object-cover shadow-sm" />
-                        <div>
-                          <p className="font-bold text-gray-900 text-base">{event.title}</p>
-                          <p className="text-xs text-gray-500 font-medium mt-0.5 flex items-center gap-1.5">
-                            <span className="text-green-600">★ {event.rating}</span> • {formatDate(event.date)} • {event.district}
-                          </p>
-                        </div>
-                      </Link>
-                    ))}
+                  {searchResults.map((event) => (
+                    <Link 
+                      key={event.id_evento} 
+                      to={`/eventos/${event.id_evento}`}
+                      className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors border-b border-gray-50 last:border-0"
+                    >
+                      <img src={event.foto_evento} alt={event.titulo} className="w-14 h-14 rounded-xl object-cover shadow-sm" />
+                      <div>
+                        <p className="font-bold text-gray-900 text-base">{event.titulo}</p>
+                        <p className="text-xs text-gray-500 font-medium mt-0.5 flex items-center gap-1.5">
+                          <span className="text-green-600">★ {event.classificacao}</span> • {formatDate(event.data_hora)} • {event.distrito}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
                     <Link to="/eventos" className="block w-full text-center p-4 text-sm font-bold text-gray-500 hover:text-black hover:bg-gray-50 transition-colors">
                       Ver todos os resultados para "{searchQuery}" →
                     </Link>
