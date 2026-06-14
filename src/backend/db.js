@@ -8,7 +8,7 @@ const pool = new Pool({
 
 // Forçar encoding UTF8 em cada nova ligação para evitar problemas com acentos
 pool.on("connect", (client) => {
-  client.query("SET client_encoding = 'WIN1252'");
+  client.query("SET client_encoding = 'UTF8'");
 });
 
 // Testar a ligação logo ao arrancar
