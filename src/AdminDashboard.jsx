@@ -19,6 +19,8 @@ export default function AdminDashboard() {
   const user = getUserFromToken();
   const userName = localStorage.getItem("userName") || "Admin";
   
+  const [verificandoAdmin, setVerificandoAdmin] = useState(true);
+  
   const [tabAtiva, setTabAtiva] = useState("visao_geral"); 
   const [eventos, setEventos] = useState([]);
   const [utilizadores, setUtilizadores] = useState([]);
@@ -28,7 +30,7 @@ export default function AdminDashboard() {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [eventoEditado, setEventoEditado] = useState(null); 
   const [novoEvento, setNovoEvento] = useState({
-    titulo: "", preco: "", categoria: "", data_hora: "", local_evento: "", distrito: "", stock_disponivel: "", foto_evento: "", descricao: ""
+    titulo: "", subtitulo: "", preco: "", categoria: "", data_hora: "", local_evento: "", distrito: "", stock_disponivel: "", foto_evento: "", descricao: "", hora_portas: "", hora_inicio: ""
   });
 
   const carregarEventos = async () => {
@@ -39,6 +41,7 @@ export default function AdminDashboard() {
         setEventos(dados.map(e => ({
           id: e.id_evento,
           title: e.titulo,
+          subtitulo: e.subtitulo || "",
           image: e.foto_evento,
           price: Number(e.preco),
           category: e.categoria,
@@ -47,7 +50,9 @@ export default function AdminDashboard() {
           ticketsLeft: e.stock_disponivel,
           total: e.stock_disponivel,
           local_evento: e.local_evento,
-          descricao: e.descricao
+          descricao: e.descricao,
+          hora_portas: e.hora_portas ? e.hora_portas.slice(0, 5) : "",
+          hora_inicio: e.hora_inicio ? e.hora_inicio.slice(0, 5) : ""
         })));
       }
     } catch (err) {
@@ -63,31 +68,48 @@ export default function AdminDashboard() {
         setUtilizadores(dados);
       }
     } catch (error) {
-      console.error("Erro ao ligar à base de dados para buscar utilizadores.");
+      console.error("Erro ao buscar utilizadores:", error);
     }
   };
 
   const carregarAdminStats = async () => {
-  try {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/utilizadores/admin/stats?t=${Date.now()}`);
-    if (res.ok) {
-      const dados = await res.json();
-      console.log("Dados recebidos no Front:", dados);
-      setAdminStats(dados);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/utilizadores/admin/stats?t=${Date.now()}`);
+      if (res.ok) {
+        const dados = await res.json();
+        setAdminStats(dados);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar stats admin:", err);
     }
-  } catch (err) {
-    console.error("Erro ao carregar stats admin:", err);
-  }
-};
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    if (!user) { navigate("/login"); return; }
+    if (!user) { 
+      navigate("/login"); 
+      return; 
+    }
     
-    carregarEventos();
-    carregarUtilizadores();
-    carregarAdminStats();
-  }, [navigate]);
+    fetch(`${import.meta.env.VITE_API_URL}/api/utilizadores/${user.id}`)
+      .then(r => r.json())
+      .then(dados => {
+        const isReallyAdmin = dados.is_admin === true || String(dados.is_admin) === "1" || String(dados.is_admin) === "true";
+        if (isReallyAdmin) {
+          localStorage.setItem("isAdmin", "true");
+          setVerificandoAdmin(false);
+          carregarEventos();
+          carregarUtilizadores();
+          carregarAdminStats();
+        } else {
+          localStorage.removeItem("isAdmin");
+          navigate("/"); 
+        }
+      })
+      .catch(() => {
+        navigate("/"); 
+      });
+  }, [navigate]); 
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -109,7 +131,7 @@ export default function AdminDashboard() {
 
   const abrirModalCriar = () => {
     setEventoEditado(null);
-    setNovoEvento({ titulo: "", preco: "", categoria: "", data_hora: "", local_evento: "", distrito: "", stock_disponivel: "", foto_evento: "", descricao: "" });
+    setNovoEvento({ titulo: "", subtitulo: "", preco: "", categoria: "", data_hora: "", local_evento: "", distrito: "", stock_disponivel: "", foto_evento: "", descricao: "", hora_portas: "", hora_inicio: "" });
     setMostrarModal(true);
   };
 
@@ -117,6 +139,7 @@ export default function AdminDashboard() {
     setEventoEditado(evento.id);
     setNovoEvento({
       titulo: evento.title || "",
+      subtitulo: evento.subtitulo || "",
       preco: evento.price || "",
       categoria: evento.category || "",
       data_hora: formatarDataParaInput(evento.date),
@@ -124,7 +147,9 @@ export default function AdminDashboard() {
       distrito: evento.district || "",
       stock_disponivel: evento.total || "",
       foto_evento: evento.image || "",
-      descricao: evento.descricao || ""
+      descricao: evento.descricao || "",
+      hora_portas: evento.hora_portas ? evento.hora_portas.slice(0, 5) : "",
+      hora_inicio: evento.hora_inicio ? evento.hora_inicio.slice(0, 5) : ""
     });
     setMostrarModal(true);
   };
@@ -138,17 +163,28 @@ export default function AdminDashboard() {
       
       const metodo = eventoEditado ? "PUT" : "POST";
 
+      const payload = {
+        ...novoEvento,
+        preco: parseFloat(novoEvento.preco),
+        stock_disponivel: parseInt(novoEvento.stock_disponivel, 10),
+        subtitulo: novoEvento.subtitulo || "",
+        foto_evento: novoEvento.foto_evento || null,
+        hora_portas: novoEvento.hora_portas || null,
+        hora_inicio: novoEvento.hora_inicio || null,
+      };
+
       const res = await fetch(url, {
         method: metodo,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(novoEvento)
+        body: JSON.stringify(payload)
       });
       
       if (res.ok) {
         carregarEventos();
         setMostrarModal(false); 
       } else {
-        alert("Erro ao gravar o evento na base de dados.");
+        const erroJson = await res.json().catch(() => null);
+        alert("Erro ao gravar o evento: " + (erroJson?.erro || res.statusText));
       }
     } catch (error) {
       alert("Não foi possível ligar ao servidor.");
@@ -198,9 +234,12 @@ export default function AdminDashboard() {
     }`;
   };
 
+  if (verificandoAdmin) {
+    return <div className="min-h-screen bg-slate-50"></div>; 
+  }
+
   return (
     <div className="bg-slate-50 font-sans min-h-screen pb-20">
-      
       <nav className="w-full z-40 bg-indigo-950 text-white flex justify-between items-center px-8 py-4 shadow-sm sticky top-0 border-b border-indigo-900">
         <div className="flex items-center gap-3">
           <Link to="/" className="text-xl font-bold flex items-center gap-2 hover:opacity-80 transition-opacity">
@@ -219,7 +258,6 @@ export default function AdminDashboard() {
       </nav>
 
       <div className="max-w-[1600px] mx-auto w-full flex-grow flex flex-col md:flex-row gap-8 px-4 sm:px-8 py-10">
-        
         <aside className="w-full md:w-64 flex-shrink-0 space-y-2 sticky top-28 h-fit">
           <Link to="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-black font-bold text-sm mb-6 transition-colors">
             <ChevronLeft className="w-4 h-4" /> Voltar ao Site Normal
@@ -243,7 +281,6 @@ export default function AdminDashboard() {
         </aside>
 
         <main className="flex-1 space-y-8 min-w-0">
-          
           {tabAtiva === "visao_geral" && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div>
@@ -256,15 +293,12 @@ export default function AdminDashboard() {
                   <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
                     <DollarSign className="w-6 h-6" />
                   </div>
-                 <div>
-  <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Receita Total</p>
-  <p className="text-2xl font-black text-gray-900 mt-0.5">
-    {adminStats.receita_total.toLocaleString("pt-PT", { 
-      style: "currency", 
-      currency: "EUR" 
-    })}
-  </p>
-</div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Receita Total</p>
+                    <p className="text-2xl font-black text-gray-900 mt-0.5">
+                      {adminStats.receita_total.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
+                    </p>
+                  </div>
                 </div>
                 <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
@@ -486,6 +520,12 @@ export default function AdminDashboard() {
                 <label className="block text-sm font-bold text-gray-700 mb-1">Título do Evento *</label>
                 <input type="text" name="titulo" required value={novoEvento.titulo} onChange={handleChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
               </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Subtítulo (Descrição Breve nos Cards) *</label>
+                <input type="text" name="subtitulo" required value={novoEvento.subtitulo} onChange={handleChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Categoria *</label>
@@ -494,6 +534,16 @@ export default function AdminDashboard() {
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Data e Hora *</label>
                   <input type="datetime-local" name="data_hora" required value={novoEvento.data_hora} onChange={handleChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Hora de Abertura de Portas</label>
+                  <input type="time" name="hora_portas" value={novoEvento.hora_portas} onChange={handleChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Hora de Início</label>
+                  <input type="time" name="hora_inicio" value={novoEvento.hora_inicio} onChange={handleChange} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

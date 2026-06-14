@@ -4,6 +4,7 @@ import { Calendar, MapPin, Clock, Ticket, Star, ChevronLeft, ShieldCheck, Flame,
 import { useCart } from './CartContext';
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+
 function formatDateLong(iso) {
   const d = new Date(iso);
   const weekday = d.toLocaleDateString("pt-PT", { weekday: "long" });
@@ -32,13 +33,14 @@ export default function EventDetalhes() {
           id: dados.id_evento,
           title: dados.titulo,
           description: dados.descricao,
-          shortDescription: dados.descricao_curta,
+          // Tenta 'subtitulo' primeiro (campo da BD atualizada), depois 'descricao_curta' como fallback
+          shortDescription: dados.subtitulo || dados.descricao_curta || "Sem descrição disponível.",
           date: dados.data_hora,
           price: parseFloat(dados.preco),
           image: dados.foto_evento,
           ticketsLeft: dados.stock_disponivel,
-          doorsOpen: dados.hora_portas,
-          startTime: dados.hora_inicio,
+          doorsOpen: dados.hora_portas ? dados.hora_portas.slice(0, 5) : null,
+          startTime: dados.hora_inicio ? dados.hora_inicio.slice(0, 5) : null,
           venue: dados.local_evento,
           address: dados.morada,
           district: dados.distrito,
@@ -84,7 +86,8 @@ export default function EventDetalhes() {
       eventImage: event.image,
       ticketType: selectedTicket.name,
       price: selectedTicket.price,
-      quantity: 1
+      quantity: 1,
+      ticketsLeft: event.ticketsLeft  // Necessário para a validação de stock no Carrinho
     });
     navigate('/carrinho');
   };

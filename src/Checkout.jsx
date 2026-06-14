@@ -27,19 +27,22 @@ function QRCodeImage({ value, size = 140 }) {
     />
   );
 }
+
 const formatPhone = (v) => v.replace(/\D/g, "").slice(0, 9);
 
+// CORRIGIDO (Checkout.jsx): Validação do mês — corrige mês > 12 ou = 0 antes de formatar
 const formatExpiry = (v) => {
   let digits = v.replace(/\D/g, "").slice(0, 4);
   if (digits.length >= 2) {
     let month = parseInt(digits.slice(0, 2));
-    if (month > 12) month = 12; // Corrige meses tipo 13, 14...
+    if (month > 12) month = 12;
     if (month === 0) month = 1;
     digits = month.toString().padStart(2, '0') + digits.slice(2);
     return digits.slice(0, 2) + (digits.length > 2 ? "/" + digits.slice(2) : "");
   }
   return digits;
 };
+
 export default function Checkout() {
   const navigate = useNavigate();
   const { cart, clearCart } = useCart();
@@ -49,7 +52,7 @@ export default function Checkout() {
     cardNumber: "", cardName: "", expiry: "", cvv: "",
   });
 
-  const [step, setStep] = useState("form"); 
+  const [step, setStep] = useState("form");
   const [processingMsg, setProcessingMsg] = useState("");
   const [bilhetesComprados, setBilhetesComprados] = useState([]);
   const [erroMsg, setErroMsg] = useState("");
@@ -61,7 +64,9 @@ export default function Checkout() {
   }, [cart, step, navigate]);
 
   const serviceFee = cart.length > 0 ? 2.5 : 0;
-  const subtotal = cart.reduce((sum, item) => sum + Number(item.price), 0);
+
+  // CORRIGIDO (Checkout_2.jsx): O subtotal multiplica o preço unitário pela quantidade dinâmica guardada
+  const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) * (item.quantity || 1)), 0);
   const total = subtotal + serviceFee;
 
   const handleChange = (field) => (e) => setForm({ ...form, [field]: e.target.value });
@@ -69,100 +74,125 @@ export default function Checkout() {
   const formatCardNumber = (v) =>
     v.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ");
 
-  const formatExpiry = (v) => {
-    const digits = v.replace(/\D/g, "").slice(0, 4);
-    if (digits.length < 3) return digits;
-    return digits.slice(0, 2) + "/" + digits.slice(2);
-  };
-
   const getUtilizador = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return null;
       const payload = JSON.parse(atob(token.split(".")[1]));
-      return payload; // { id, email }
+      return payload;
     } catch {
       return null;
     }
   };
+
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  let errosEncontrados = [];
+    e.preventDefault();
 
-  if (form.telefone.replace(/\D/g, "").length !== 9) {
-    errosEncontrados.push("O número de telefone deve ter 9 dígitos.");
-  }
+    let errosEncontrados = [];
 
-  const expiryClean = form.expiry.replace(/\D/g, "");
-  if (expiryClean.length !== 4) {
-    errosEncontrados.push("Data de validade inválida (usa MM/AA).");
-  } else {
-    const month = parseInt(expiryClean.slice(0, 2));
-    const yearShort = parseInt(expiryClean.slice(2));
-    const yearFull = 2000 + yearShort;
-    
-    const agora = new Date();
-    const anoAtual = agora.getFullYear(); 
-    const mesAtual = agora.getMonth() + 1;
-
-    if (yearFull < anoAtual || (yearFull === anoAtual && month < mesAtual)) {
-      errosEncontrados.push(`O cartão expirou (estamos em ${mesAtual.toString().padStart(2, '0')}/${anoAtual.toString().slice(-2)}).`);
+    if (form.telefone.replace(/\D/g, "").length !== 9) {
+      errosEncontrados.push("O número de telefone deve ter 9 dígitos.");
     }
-  }
 
-  if (errosEncontrados.length > 0) {
-    setErroMsg(errosEncontrados.join(" | ")); 
-    setStep("error");
-    return;
-  }
-  setStep("processing");
+    const expiryClean = form.expiry.replace(/\D/g, "");
+    if (expiryClean.length !== 4) {
+      errosEncontrados.push("Data de validade inválida (usa MM/AA).");
+    } else {
+      const month = parseInt(expiryClean.slice(0, 2));
+      const yearShort = parseInt(expiryClean.slice(2));
+      const yearFull = 2000 + yearShort;
 
-  const utilizador = getUtilizador(); 
+      const agora = new Date();
+      const anoAtual = agora.getFullYear();
+      const mesAtual = agora.getMonth() + 1;
 
-  setProcessingMsg("A verificar dados do cartão...");
-  await new Promise((r) => setTimeout(r, 800));
-  setProcessingMsg("A processar pagamento...");
-  await new Promise((r) => setTimeout(r, 900));
-  setProcessingMsg("A gerar os teus bilhetes...");
-  await new Promise((r) => setTimeout(r, 600));
-
-  const resultados = [];
-  for (const item of cart) {
-    try {
-      const token = localStorage.getItem("token");
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/bilhetes`, {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify({
-          id_utilizador: utilizador ? utilizador.id : null, 
-          id_evento: item.eventId,
-          email: form.email,
-          nome: form.nome,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.erro || "Erro ao criar bilhete");
+      if (yearFull < anoAtual || (yearFull === anoAtual && month < mesAtual)) {
+        errosEncontrados.push(`O cartão expirou (estamos em ${mesAtual.toString().padStart(2, '0')}/${anoAtual.toString().slice(-2)}).`);
       }
+    }
 
-      const bilhete = await res.json();
-      resultados.push({ ...bilhete, item });
-    } catch (err) {
-      setErroMsg(`Erro ao comprar bilhete para "${item.eventTitle}": ${err.message}`);
+    if (errosEncontrados.length > 0) {
+      setErroMsg(errosEncontrados.join(" | "));
       setStep("error");
       return;
     }
-  }
 
-  setBilhetesComprados(resultados);
-  clearCart();
-  setStep("success");
-};
+    // ── VERIFICAÇÃO DE STOCK ANTES DO PAGAMENTO (Checkout.jsx) ───────────────
+    setStep("processing");
+    setProcessingMsg("A verificar disponibilidade dos bilhetes...");
+
+    const token = localStorage.getItem("token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    for (const item of cart) {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/eventos/${item.eventId || item.id}`);
+        if (!res.ok) throw new Error("Evento não encontrado.");
+        const evento = await res.json();
+
+        const quantidade = item.quantity || 1;
+        const stockDisponivel = evento.stock_disponivel ?? Infinity;
+
+        if (stockDisponivel < quantidade) {
+          setErroMsg(`O número de bilhetes selecionados para "${item.eventTitle}" excede o stock disponível.${stockDisponivel === 0 ? ' Este evento está esgotado.' : ` Apenas ${stockDisponivel} bilhete${stockDisponivel > 1 ? 's disponíveis' : ' disponível'}.`}`);
+          setStep("error");
+          return;
+        }
+      } catch (err) {
+        setErroMsg(`Não foi possível verificar o stock de "${item.eventTitle}": ${err.message}`);
+        setStep("error");
+        return;
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const utilizador = getUtilizador();
+
+    setProcessingMsg("A verificar dados do cartão...");
+    await new Promise((r) => setTimeout(r, 800));
+    setProcessingMsg("A processar pagamento...");
+    await new Promise((r) => setTimeout(r, 900));
+    setProcessingMsg("A gerar os teus bilhetes...");
+    await new Promise((r) => setTimeout(r, 600));
+
+    const resultados = [];
+    for (const item of cart) {
+      const quantidade = item.quantity || 1;
+      // CORRIGIDO (Checkout.jsx): Cria um bilhete por cada unidade da quantity
+      for (let q = 0; q < quantidade; q++) {
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/bilhetes`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              id_utilizador: utilizador ? utilizador.id : null,
+              id_evento: item.eventId || item.id,
+              email: form.email,
+              nome: form.nome,
+            }),
+          });
+
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.erro || "Erro ao criar bilhete");
+          }
+
+          const bilhete = await res.json();
+          resultados.push({ ...bilhete, item });
+        } catch (err) {
+          setErroMsg(`Erro ao comprar bilhete para "${item.eventTitle}": ${err.message}`);
+          setStep("error");
+          return;
+        }
+      }
+    }
+
+    setBilhetesComprados(resultados);
+    clearCart();
+    setStep("success");
+  };
+
   if (step === "processing") {
     return (
       <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
@@ -215,77 +245,77 @@ export default function Checkout() {
   }
 
   if (step === "success") {
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
-          <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 text-center text-white">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 animate-bounce">
-              <CheckCircle2 className="w-8 h-8 text-white" />
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+            <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 text-center text-white">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 animate-bounce">
+                <CheckCircle2 className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-3xl font-black mb-2">Sucesso!</h2>
+              <p className="text-white/90 text-sm">
+                {localStorage.getItem("token")
+                  ? "Os teus bilhetes foram guardados no teu perfil."
+                  : `Enviámos os bilhetes para ${form.email}. Guarda o QR Code abaixo.`}
+              </p>
             </div>
-            <h2 className="text-3xl font-black mb-2">Sucesso!</h2>
-            <p className="text-white/90 text-sm">
-              {localStorage.getItem("token") 
-                ? "Os teus bilhetes foram guardados no teu perfil." 
-                : `Enviámos os bilhetes para ${form.email}. Guarda o QR Code abaixo.`}
-            </p>
-          </div>
 
-          <div className="p-6 space-y-6">
-            <div className="space-y-4">
-              {bilhetesComprados.map((b, idx) => (
-                <div key={idx} className="bg-gray-50 rounded-2xl border border-dashed border-gray-300 overflow-hidden">
-                  <div className="p-5 flex flex-col items-center border-b border-gray-100">
-                    <QRCodeImage value={b.codigo_qr} />
-                    <div className="mt-4 text-center">
-                      <h3 className="font-black text-gray-900 leading-tight">{b.item.eventTitle}</h3>
-                      <p className="text-xs text-indigo-600 font-bold uppercase mt-1 tracking-widest">{b.codigo_qr}</p>
+            <div className="p-6 space-y-6">
+              <div className="space-y-4">
+                {bilhetesComprados.map((b, idx) => (
+                  <div key={idx} className="bg-gray-50 rounded-2xl border border-dashed border-gray-300 overflow-hidden">
+                    <div className="p-5 flex flex-col items-center border-b border-gray-100">
+                      <QRCodeImage value={b.codigo_qr} />
+                      <div className="mt-4 text-center">
+                        <h3 className="font-black text-gray-900 leading-tight">{b.item.eventTitle}</h3>
+                        <p className="text-xs text-indigo-600 font-bold uppercase mt-1 tracking-widest">{b.codigo_qr}</p>
+                      </div>
+                    </div>
+
+                    <div className="px-5 py-3 flex justify-between items-center text-sm">
+                      <span className="text-gray-500 font-medium">Preço do Bilhete</span>
+                      <span className="font-bold text-gray-900">
+                        {Number(b.item.price).toFixed(2)}€
+                      </span>
                     </div>
                   </div>
-                  
-                  <div className="px-5 py-3 flex justify-between items-center text-sm">
-                    <span className="text-gray-500 font-medium">Preço do Bilhete</span>
-                    <span className="font-bold text-gray-900">
-                      {Number(b.item.price).toFixed(2)}€
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-4 border-t border-gray-100">
-              <div className="flex justify-between items-center mb-6">
-                <span className="text-gray-500 font-bold uppercase text-xs tracking-widest">Total Pago</span>
-                <span className="text-2xl font-black text-gray-900">
-                  {(bilhetesComprados.reduce((acc, b) => acc + Number(b.item.price), 0) + 2.5).toFixed(2)}€
-                </span>
+                ))}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                {localStorage.getItem("token") ? (
-                  <button onClick={() => navigate("/perfil")}
-                    className="flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold py-3.5 rounded-2xl hover:bg-indigo-700 transition-all text-sm shadow-lg shadow-indigo-200">
-                    <UserIcon className="w-4 h-4" /> Ver Perfil
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex justify-between items-center mb-6">
+                  <span className="text-gray-500 font-bold uppercase text-xs tracking-widest">Total Pago</span>
+                  <span className="text-2xl font-black text-gray-900">
+                    {(bilhetesComprados.reduce((acc, b) => acc + Number(b.item.price), 0) + 2.5).toFixed(2)}€
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {localStorage.getItem("token") ? (
+                    <button onClick={() => navigate("/perfil")}
+                      className="flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold py-3.5 rounded-2xl hover:bg-indigo-700 transition-all text-sm shadow-lg shadow-indigo-200">
+                      <UserIcon className="w-4 h-4" /> Ver Perfil
+                    </button>
+                  ) : (
+                    <button onClick={() => window.print()}
+                      className="flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold py-3.5 rounded-2xl hover:bg-indigo-700 transition-all text-sm shadow-lg shadow-indigo-200">
+                      Imprimir
+                    </button>
+                  )}
+
+                  <button onClick={() => navigate("/eventos")}
+                    className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 font-bold py-3.5 rounded-2xl hover:bg-gray-200 transition-all text-sm">
+                    Mais eventos
                   </button>
-                ) : (
-                  <button onClick={() => window.print()}
-                    className="flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold py-3.5 rounded-2xl hover:bg-indigo-700 transition-all text-sm shadow-lg shadow-indigo-200">
-                    Imprimir
-                  </button>
-                )}
-                
-                <button onClick={() => navigate("/eventos")}
-                  className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 font-bold py-3.5 rounded-2xl hover:bg-gray-200 transition-all text-sm">
-                  Mais eventos
-                </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans pt-20">
@@ -429,32 +459,43 @@ export default function Checkout() {
               </div>
               <div className="p-5 space-y-4">
                 <div className="space-y-3">
-                  {cart.map((item, index) => (
-                    <div key={index} className="flex gap-3 items-start">
-                      {item.eventImage ? (
-                        <img src={item.eventImage} alt={item.eventTitle} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
-                      ) : (
-                        <div className="w-14 h-14 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                          <Ticket className="w-6 h-6 text-indigo-300" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm text-gray-900 line-clamp-2">{item.eventTitle}</div>
-                        {item.eventDate && (
-                          <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />{formatDateLong(item.eventDate)}
+                  {cart.map((item, index) => {
+                    // CORRIGIDO (Checkout_2.jsx): Deteta a quantidade atualizada do bilhete
+                    const itemQty = item.quantity || 1;
+                    return (
+                      <div key={index} className="flex gap-3 items-start">
+                        {item.eventImage ? (
+                          <img src={item.eventImage} alt={item.eventTitle} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
+                        ) : (
+                          <div className="w-14 h-14 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                            <Ticket className="w-6 h-6 text-indigo-300" />
                           </div>
                         )}
-                        <div className="text-xs text-indigo-600 font-medium mt-0.5">{item.ticketType}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm text-gray-900 line-clamp-2">{item.eventTitle}</div>
+                          {item.eventDate && (
+                            <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />{formatDateLong(item.eventDate)}
+                            </div>
+                          )}
+                          {/* CORRIGIDO (Checkout_2.jsx): Exibe a quantidade do item de forma visual e limpa */}
+                          <div className="text-xs text-indigo-600 font-semibold mt-0.5">
+                            {item.ticketType} <span className="text-gray-400 font-normal">x{itemQty}</span>
+                          </div>
+                        </div>
+                        {/* CORRIGIDO (Checkout_2.jsx): O preço unitário é multiplicado pelo número total de bilhetes */}
+                        <div className="text-sm font-bold text-gray-900 flex-shrink-0">
+                          {(Number(item.price) * itemQty).toFixed(2)}€
+                        </div>
                       </div>
-                      <div className="text-sm font-bold text-gray-900 flex-shrink-0">{Number(item.price).toFixed(2)}€</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="border-t border-gray-100 pt-4 space-y-2 text-sm">
                   <div className="flex justify-between text-gray-600">
-                    <span>Subtotal ({cart.length} {cart.length === 1 ? "bilhete" : "bilhetes"})</span>
+                    {/* CORRIGIDO (Checkout_2.jsx): Soma o número total exato de bilhetes para a etiqueta */}
+                    <span>Subtotal ({cart.reduce((acc, item) => acc + (item.quantity || 1), 0)} {cart.reduce((acc, item) => acc + (item.quantity || 1), 0) === 1 ? "bilhete" : "bilhetes"})</span>
                     <span>{subtotal.toFixed(2)}€</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
@@ -469,7 +510,7 @@ export default function Checkout() {
                 </div>
 
                 <button type="submit"
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-3 rounded-full hover:shadow-lg hover:scale-[1.02] transition-all">
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-3 rounded-full hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer">
                   Pagar {total.toFixed(2)}€ <ChevronRight className="w-4 h-4" />
                 </button>
 

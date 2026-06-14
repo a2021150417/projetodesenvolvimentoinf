@@ -6,18 +6,31 @@ export default function RecuperarPassword() {
   const [enviado, setEnviado] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    await fetch('/api/utilizadores/recuperar-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-    setEnviado(true);
-    setLoading(false);
-  };
+    
+    try {
+      // Adicionada a variável de ambiente VITE_API_URL
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/utilizadores/recuperar-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
 
+      // Opcional: Só mostra como enviado se o backend não der erro 500/404
+      if (res.ok) {
+        setEnviado(true);
+      } else {
+        alert("Ocorreu um erro ao comunicar com o servidor.");
+      }
+    } catch (error) {
+      console.error("Erro no pedido:", error);
+      alert("Não foi possível ligar ao servidor.");
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <div className="font-sans min-h-screen flex items-center justify-center bg-slate-100 px-4">
       <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md">

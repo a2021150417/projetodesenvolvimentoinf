@@ -1,3 +1,60 @@
+// =============================================================================
+// FUNÇÕES DA API (equivalente ao router Express do backend)
+// Chamadas HTTP que espelham todas as rotas de eventos/Eventos.js
+// =============================================================================
+
+const API_URL = import.meta.env.VITE_API_URL;
+
+// 1. LISTAR EVENTOS (com pesquisa opcional passada ao backend)
+export async function listarEventos(search = "") {
+  const url = search && search.trim() !== ""
+    ? `${API_URL}/api/eventos?search=${encodeURIComponent(search.trim())}`
+    : `${API_URL}/api/eventos`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error((await r.json()).erro || "Erro ao listar eventos");
+  return r.json();
+}
+
+// 2. BUSCAR UM EVENTO POR ID
+export async function buscarEventoPorId(id) {
+  const r = await fetch(`${API_URL}/api/eventos/${id}`);
+  if (!r.ok) throw new Error((await r.json()).erro || "Evento não encontrado");
+  return r.json();
+}
+
+// 3. CRIAR NOVO EVENTO
+export async function criarEvento({ titulo, subtitulo, descricao, data_hora, preco, stock_disponivel, categoria, local_evento, distrito, foto_evento }) {
+  const r = await fetch(`${API_URL}/api/eventos`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ titulo, subtitulo: subtitulo || "", descricao, data_hora, preco, stock_disponivel, categoria, local_evento, distrito, foto_evento }),
+  });
+  if (!r.ok) throw new Error((await r.json()).erro || "Erro ao criar evento");
+  return r.json();
+}
+
+// 4. ATUALIZAR EVENTO EXISTENTE
+export async function atualizarEvento(id, { titulo, subtitulo, descricao, data_hora, preco, stock_disponivel, categoria, local_evento, distrito, foto_evento }) {
+  const r = await fetch(`${API_URL}/api/eventos/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ titulo, subtitulo: subtitulo || "", descricao, data_hora, preco, stock_disponivel, categoria, local_evento, distrito, foto_evento }),
+  });
+  if (!r.ok) throw new Error((await r.json()).erro || "Erro ao atualizar evento");
+  return r.json();
+}
+
+// 5. ELIMINAR EVENTO
+export async function eliminarEvento(id) {
+  const r = await fetch(`${API_URL}/api/eventos/${id}`, { method: "DELETE" });
+  if (!r.ok) throw new Error((await r.json()).erro || "Erro ao eliminar evento");
+  return r.json(); // { mensagem: "Evento apagado com sucesso" }
+}
+
+// =============================================================================
+// COMPONENTE REACT (Eventos_2.jsx — página de listagem de eventos)
+// =============================================================================
+
 import { useState, useMemo, useEffect } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -13,12 +70,15 @@ const SORT_OPTIONS = [
   { id: "price-asc", label: "Preço: baixo para alto" },
   { id: "price-desc", label: "Preço: alto para baixo" },
 ];
+
 function formatDate(iso) {
   const d = new Date(iso);
   return d.toLocaleDateString("pt-PT", { day: "numeric", month: "numeric", year: "2-digit" });
 }
+
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+
 function EventCard({ event }) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const fav = isFavorite(event.id);
@@ -100,15 +160,16 @@ export default function Eventos() {
     setter((prev) => prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]);
   };
 
+  // Usa listarEventos() com pesquisa passada ao backend (título, categoria, distrito)
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/api/eventos`)
-      .then((r) => r.json())
+    setLoadingEventos(true);
+    listarEventos(search)
       .then((dados) => {
         const mapped = dados.map((e) => ({
           id: e.id_evento,
           title: e.titulo,
           description: e.descricao || "",
-          shortDescription: e.descricao_curta || "",
+          shortDescription: e.subtitulo || "Sem descrição disponível.", // CORRIGIDO: Mapeado para o novo campo da base de dados
           date: e.data_hora,
           price: Number(e.preco),
           category: e.categoria,
@@ -126,7 +187,7 @@ export default function Eventos() {
         setLoadingEventos(false);
       })
       .catch(() => setLoadingEventos(false));
-  }, []);
+  }, [search]);
 
   const clearFilters = () => {
     setSearch(""); setPriceRange([0, 100]); setSelectedCategories([]); setSelectedDistricts([]);
@@ -176,15 +237,8 @@ export default function Eventos() {
     </div>
   );
 
-  const footerColumns = [
-    { title: "Categorias", links: [{ label: "Música & Festivais", to: "#" }, { label: "Desporto", to: "#" }, { label: "Teatro & Arte", to: "#" }, { label: "Comédia", to: "#" }] },
-    { title: "Suporte", links: [{ label: "Centro de Ajuda", to: "/suporte#ajuda" }, { label: "Como funciona o QR", to: "/suporte#qr" }, { label: "Contactos", action: () => setShowContactModal(true) }, { label: "FAQ", to: "/suporte#faq" }] },
-    { title: "Legal", links: [{ label: "Termos e Condições", to: "#" }, { label: "Política de Privacidade", to: "#" }, { label: "Gestão de Cookies", to: "#" }] }
-  ];
-
   return (
     <div className="min-h-screen bg-white font-sans flex flex-col">
-      
       <Navbar />
 
       <section className="bg-gray-950 pt-36 pb-20 px-8 relative overflow-hidden">
@@ -238,7 +292,7 @@ export default function Eventos() {
 
         {activeFilterCount > 0 && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mr-2">Filtros ativos:</span>
+            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mr-2">Filtros activos:</span>
             {search && <FilterBadge label={`"${search}"`} onRemove={() => setSearch("")} />}
             {(priceRange[0] !== 0 || priceRange[1] !== 100) && <FilterBadge label={`${priceRange[0]}€ - ${priceRange[1]}€`} onRemove={() => setPriceRange([0, 100])} />}
             {selectedCategories.map((c) => <FilterBadge key={c} label={c} onRemove={() => toggle(setSelectedCategories, c)} />)}
@@ -250,7 +304,6 @@ export default function Eventos() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-grow w-full">
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-10">
-          
           <aside className={`${showMobileFilters ? "block" : "hidden"} lg:block space-y-6 lg:sticky lg:top-40 self-start`}>
             <div className="bg-slate-50 rounded-3xl p-6 border border-gray-100 shadow-sm">
               <h3 className="font-extrabold text-gray-900 mb-5 text-lg">Preço</h3>
@@ -287,27 +340,7 @@ export default function Eventos() {
         </div>
       </main>
 
-      
       <Footer />
-
-      {showContactModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setShowContactModal(false)}></div>
-          <div className="bg-white rounded-3xl p-8 w-full max-w-sm relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <button onClick={() => setShowContactModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-            <h3 className="text-2xl font-extrabold text-gray-900 mb-2">Contactos</h3>
-            <p className="text-gray-500 text-sm mb-8">Precisas de falar connosco? Aqui tens os nossos detalhes.</p>
-            <div className="space-y-6">
-              <div className="flex items-start gap-4"><div className="bg-gray-100 p-3 rounded-full text-gray-900 flex-shrink-0"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></div><div><h4 className="font-bold text-gray-900 text-sm">Email</h4><a href="mailto:suporte@quickpass.pt" className="text-gray-600 text-sm hover:text-black hover:underline transition-colors">suporte@quickpass.pt</a></div></div>
-              <div className="flex items-start gap-4"><div className="bg-gray-100 p-3 rounded-full text-gray-900 flex-shrink-0"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.243-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div><div><h4 className="font-bold text-gray-900 text-sm">Morada</h4><p className="text-gray-600 text-sm">Avenida da Liberdade, 100<br/>1250-096 Lisboa, Portugal</p></div></div>
-              <div className="flex items-start gap-4"><div className="bg-gray-100 p-3 rounded-full text-gray-900 flex-shrink-0"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg></div><div><h4 className="font-bold text-gray-900 text-sm">Fax</h4><p className="text-gray-600 text-sm">+351 210 000 000</p></div></div>
-            </div>
-            <button type="button" onClick={() => setShowContactModal(false)} className="w-full bg-black text-white p-4 rounded-full hover:bg-gray-800 font-bold transition shadow-sm mt-10">Fechar</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

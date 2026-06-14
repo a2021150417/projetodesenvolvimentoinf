@@ -21,6 +21,7 @@ import Termos from './Termos';
 import Privacidade from './Privacidade';
 import Cookies from './Cookies';
 
+
 function App() {
   return (
     <Router>
@@ -45,6 +46,7 @@ function App() {
             <Route path="/termos" element={<Termos />} />
             <Route path="/privacidade" element={<Privacidade />} />
             <Route path="/cookies" element={<Cookies />} />
+           
           </Routes>
           <Chatbot />
         </CartProvider>

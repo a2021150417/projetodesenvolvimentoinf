@@ -26,8 +26,18 @@ export default function Login() {
         localStorage.setItem('token', dados.token);
         localStorage.setItem('userName', dados.utilizador.nome);
         localStorage.setItem('userId', dados.utilizador.id_utilizador);
-        
-        navigate('/');
+
+        const isAdmin = dados.utilizador.is_admin === true || dados.utilizador.is_admin === 1 || dados.utilizador.is_admin === "1";
+        localStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
+
+        // Avisa o CartContext para carregar o carrinho deste utilizador
+        window.dispatchEvent(new Event('userChanged'));
+
+        if (isAdmin) {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       } else {
         setErro(dados.erro || 'Erro ao fazer login. Verifica os teus dados.');
       }

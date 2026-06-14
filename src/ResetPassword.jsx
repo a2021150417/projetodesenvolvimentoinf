@@ -17,17 +17,26 @@ export default function ResetPassword() {
       return;
     }
     setLoading(true);
-    const res = await fetch('/api/utilizadores/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, novaPassword: password }),
-    });
-    const dados = await res.json();
-    setLoading(false);
-    if (res.ok) {
-      navigate('/login');
-    } else {
-      setErro(dados.erro || 'Erro ao redefinir palavra-passe.');
+    
+    try {
+      // Adicionada a variável de ambiente VITE_API_URL aqui!
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/utilizadores/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, novaPassword: password }),
+      });
+      
+      const dados = await res.json();
+      
+      if (res.ok) {
+        navigate('/login');
+      } else {
+        setErro(dados.erro || 'Erro ao redefinir palavra-passe.');
+      }
+    } catch (error) {
+      setErro('Não foi possível ligar ao servidor.');
+    } finally {
+      setLoading(false);
     }
   };
 

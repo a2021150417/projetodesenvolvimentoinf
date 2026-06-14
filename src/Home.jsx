@@ -4,7 +4,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 
-
 function getUserFromToken() {
   try {
     const token = localStorage.getItem("token");
@@ -40,6 +39,10 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
 
+  // NOVO ESTADO (Home_2.jsx): Armazena os eventos vindos da Base de Dados
+  const [eventosDestaque, setEventosDestaque] = useState([]);
+
+  // Carrega os comentários da API
   useEffect(() => {
     fetch("/api/comentarios")
       .then(r => r.json())
@@ -47,10 +50,32 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
+  // NOVO EFFECT (Home_2.jsx): Carrega os eventos reais e mapeia o subtitulo dinâmico
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL}/api/eventos`)
+      .then((r) => r.json())
+      .then((dados) => {
+        if (Array.isArray(dados)) {
+          const mapeados = dados.map((e) => ({
+            id: e.id_evento,
+            title: e.titulo,
+            subtitulo: e.subtitulo || "Sem descrição disponível.",
+            date: e.data_hora,
+            price: Number(e.preco),
+            category: e.categoria,
+            image: e.foto_evento,
+            local: e.local_evento
+          }));
+          setEventosDestaque(mapeados.slice(0, 4)); // Pega em até 4 eventos dinâmicos
+        }
+      })
+      .catch((err) => console.error("Erro ao carregar destaques na Home:", err));
+  }, []);
+
   const enviarComentario = async (e) => {
     e.preventDefault();
     if (!reviewEstrelas || !reviewTexto.trim()) return;
-    setReviewEnviando(true);
+    setReviewEnviando(true); // CORRIGIDO (Home.jsx): era `let reviewEnviando = true` no _2 — bug
     const user = getUserFromToken();
     const nome = reviewNome.trim() || localStorage.getItem("userName") || "Anónimo";
     try {
@@ -84,41 +109,45 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [currentBg]);
 
+  // CORRIGIDO (Home_2.jsx): usa VITE_API_URL em vez de /api/eventos direto
   const handleSearchChange = async (e) => {
-  const query = e.target.value;
-  setSearchQuery(query);
+    const query = e.target.value;
+    setSearchQuery(query);
 
-  if (query.trim() === "") {
-    setSearchResults([]);
-  } else {
-    try {
-      const res = await fetch(`/api/eventos?search=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      setSearchResults(Array.isArray(data) ? data.slice(0, 4) : []);
-    } catch {
+    if (query.trim() === "") {
       setSearchResults([]);
+    } else {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/eventos?search=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        setSearchResults(Array.isArray(data) ? data.slice(0, 4) : []);
+      } catch {
+        setSearchResults([]);
+      }
     }
-  }
-};
- const handleSearchSubmit = (e) => {
-  e.preventDefault();
-  if (searchQuery.trim()) {
-    navigate(`/eventos?search=${encodeURIComponent(searchQuery)}`);
-  } else {
-    navigate('/eventos');
-  }
-};
-const formatDate = (dateStr) => {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString("pt-PT", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  });
-};
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/eventos?search=${encodeURIComponent(searchQuery)}`);
+    } else {
+      navigate('/eventos');
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString("pt-PT", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    });
+  };
+
   return (
     <div className="font-sans text-gray-900 bg-white min-h-screen flex flex-col">
-      
+
       <Navbar />
 
       <section className="relative w-full pb-32 pt-48 min-h-[600px] flex flex-col z-20">
@@ -143,17 +172,17 @@ const formatDate = (dateStr) => {
             <h1 className="text-6xl md:text-8xl font-extrabold !m-0 !p-0 leading-none !text-white tracking-tight [text-shadow:_0_4px_12px_rgba(0,0,0,0.8)]">QuickPass</h1>
             <p className="text-xl md:text-2xl font-semibold !mt-2 !mb-0 !text-white [text-shadow:_0_2px_6px_rgba(0,0,0,0.8)] opacity-90">Vive cada momento</p>
           </div>
-          
+
           <form onSubmit={handleSearchSubmit} className="w-full max-w-2xl mx-auto px-4 relative">
             <div className="relative flex items-center text-left z-50">
               <svg className="w-6 h-6 text-gray-400 absolute left-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              <input 
-                type="search" 
+              <input
+                type="search"
                 value={searchQuery}
                 onChange={handleSearchChange}
                 autoComplete="off"
-                className="w-full py-5 pl-16 pr-36 text-base text-gray-900 bg-white border border-transparent rounded-full focus:outline-none focus:ring-4 focus:ring-green-500/50 shadow-2xl transition" 
-                placeholder="Pesquisa eventos, artistas ou locais..." 
+                className="w-full py-5 pl-16 pr-36 text-base text-gray-900 bg-white border border-transparent rounded-full focus:outline-none focus:ring-4 focus:ring-green-500/50 shadow-2xl transition"
+                placeholder="Pesquisa eventos, artistas ou locais..."
               />
               <button type="submit" className="absolute right-3 text-white bg-black hover:bg-gray-800 font-bold rounded-full text-sm px-8 py-3.5 transition">Procurar</button>
             </div>
@@ -162,21 +191,21 @@ const formatDate = (dateStr) => {
               <div className="absolute top-full left-4 right-4 mt-3 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden z-[100] text-left animate-in fade-in slide-in-from-top-4 duration-200">
                 {searchResults.length > 0 ? (
                   <div className="flex flex-col">
-                  {searchResults.map((event) => (
-                    <Link 
-                      key={event.id_evento} 
-                      to={`/eventos/${event.id_evento}`}
-                      className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors border-b border-gray-50 last:border-0"
-                    >
-                      <img src={event.foto_evento} alt={event.titulo} className="w-14 h-14 rounded-xl object-cover shadow-sm" />
-                      <div>
-                        <p className="font-bold text-gray-900 text-base">{event.titulo}</p>
-                        <p className="text-xs text-gray-500 font-medium mt-0.5 flex items-center gap-1.5">
-                          <span className="text-green-600">★ {event.classificacao}</span> • {formatDate(event.data_hora)} • {event.distrito}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
+                    {searchResults.map((event) => (
+                      <Link
+                        key={event.id_evento}
+                        to={`/eventos/${event.id_evento}`}
+                        className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors border-b border-gray-50 last:border-0"
+                      >
+                        <img src={event.foto_evento} alt={event.titulo} className="w-14 h-14 rounded-xl object-cover shadow-sm" />
+                        <div>
+                          <p className="font-bold text-gray-900 text-base">{event.titulo}</p>
+                          <p className="text-xs text-gray-500 font-medium mt-0.5 flex items-center gap-1.5">
+                            <span className="text-green-600">★ {event.classificacao}</span> • {formatDate(event.data_hora)} • {event.distrito}
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
                     <Link to="/eventos" className="block w-full text-center p-4 text-sm font-bold text-gray-500 hover:text-black hover:bg-gray-50 transition-colors">
                       Ver todos os resultados para "{searchQuery}" →
                     </Link>
@@ -202,71 +231,27 @@ const formatDate = (dateStr) => {
             </div>
             <Link to="/eventos" className="text-sm font-semibold text-black hover:underline mb-2">Ver todos os eventos →</Link>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-            <Link to="/eventos/1" className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-black/5 transition-all duration-300 hover:-translate-y-1.5 flex flex-col cursor-pointer">
-              <div className="relative h-56 overflow-hidden">
-                <div className="absolute inset-0 bg-gray-900 bg-cover bg-center group-hover:scale-110 transition-transform duration-700" style={{backgroundImage: "url('https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600&q=80')"}}></div>
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm text-black text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">Música</div>
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <p className="text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wide">14 Fev • Altice Arena</p>
-                <h3 className="font-bold text-xl mb-2 text-gray-900">Concerto do Travis Scott</h3>
-                <p className="text-sm text-gray-600 mb-6 flex-grow">Astro mundial da música vem a Portugal pela primeira vez.</p>
-                <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
-                  <span className="font-bold text-lg">90€</span>
-                  <span className="text-sm font-bold text-black group-hover:underline">Comprar</span>
-                </div>
-              </div>
-            </Link>
 
-            <Link to="/eventos/2" className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-black/5 transition-all duration-300 hover:-translate-y-1.5 flex flex-col cursor-pointer">
-              <div className="relative h-56 overflow-hidden">
-                <div className="absolute inset-0 bg-red-800 bg-cover bg-center group-hover:scale-110 transition-transform duration-700" style={{backgroundImage: "url('https://images.unsplash.com/photo-1459865264687-595d652de67e?w=600&q=80')"}}></div>
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm text-black text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">Desporto</div>
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <p className="text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wide">17 Mar • Estádio da Luz</p>
-                <h3 className="font-bold text-xl mb-2 text-gray-900">Benfica x Porto</h3>
-                <p className="text-sm text-gray-600 mb-6 flex-grow">Clássico português a não perder. Duas das maiores equipas.</p>
-                <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
-                  <span className="font-bold text-lg">55€</span>
-                  <span className="text-sm font-bold text-black group-hover:underline">Comprar</span>
+            {/* LOOP DINÂMICO (Home_2.jsx): eventos reais da Base de Dados */}
+            {eventosDestaque.map((ev) => (
+              <Link key={ev.id} to={`/eventos/${ev.id}`} className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-black/5 transition-all duration-300 hover:-translate-y-1.5 flex flex-col cursor-pointer">
+                <div className="relative h-56 overflow-hidden">
+                  <div className="absolute inset-0 bg-gray-900 bg-cover bg-center group-hover:scale-110 transition-transform duration-700" style={{ backgroundImage: `url('${ev.image || "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600&q=80"}')` }}></div>
+                  <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm text-black text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">{ev.category}</div>
                 </div>
-              </div>
-            </Link>
-
-            <Link to="/eventos/3" className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-black/5 transition-all duration-300 hover:-translate-y-1.5 flex flex-col cursor-pointer">
-              <div className="relative h-56 overflow-hidden">
-                <div className="absolute inset-0 bg-purple-900 bg-cover bg-center group-hover:scale-110 transition-transform duration-700" style={{backgroundImage: "url('https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&q=80')"}}></div>
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm text-black text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">Festival</div>
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <p className="text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wide">18 Mai • Algés</p>
-                <h3 className="font-bold text-xl mb-2 text-gray-900">NOS Alive</h3>
-                <p className="text-sm text-gray-600 mb-6 flex-grow">Um dos festivais mais prestigiados da Europa.</p>
-                <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
-                  <span className="font-bold text-lg">79€</span>
-                  <span className="text-sm font-bold text-black group-hover:underline">Comprar</span>
+                <div className="p-6 flex flex-col flex-grow">
+                  <p className="text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wide">{formatDate(ev.date)} • {ev.local}</p>
+                  <h3 className="font-bold text-xl mb-2 text-gray-900 truncate">{ev.title}</h3>
+                  <p className="text-sm text-gray-600 mb-6 flex-grow line-clamp-2">{ev.subtitulo}</p> {/* CORRIGIDO (Home_2.jsx): mostra o subtítulo dinâmico alterado no admin */}
+                  <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
+                    <span className="font-bold text-lg">{ev.price}€</span>
+                    <span className="text-sm font-bold text-black group-hover:underline">Comprar</span>
+                  </div>
                 </div>
-              </div>
-            </Link>
-
-            <Link to="/eventos/4" className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-black/5 transition-all duration-300 hover:-translate-y-1.5 flex flex-col cursor-pointer">
-              <div className="relative h-56 overflow-hidden">
-                <div className="absolute inset-0 bg-yellow-700 bg-cover bg-center group-hover:scale-110 transition-transform duration-700" style={{backgroundImage: "url('https://images.unsplash.com/photo-1527224857830-43a7acc85260?w=600&q=80')"}}></div>
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm text-black text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">Comédia</div>
-              </div>
-              <div className="p-6 flex flex-col flex-grow">
-                <p className="text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wide">26 Nov • Coliseu do Porto</p>
-                <h3 className="font-bold text-xl mb-2 text-gray-900">Levanta-te e Ri</h3>
-                <p className="text-sm text-gray-600 mb-6 flex-grow">Uma noite de gargalhadas garantidas ao vivo e sem filtros.</p>
-                <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
-                  <span className="font-bold text-lg">25€</span>
-                  <span className="text-sm font-bold text-black group-hover:underline">Comprar</span>
-                </div>
-              </div>
-            </Link>
+              </Link>
+            ))}
 
             <Link to="/eventos" className="group bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl overflow-hidden border border-gray-200 border-dashed flex flex-col items-center justify-center p-8 text-center transition-opacity opacity-80 hover:opacity-100">
               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
@@ -286,7 +271,7 @@ const formatDate = (dateStr) => {
           <p className="text-gray-600 text-lg leading-relaxed mb-16">
             Somos o André e o José, estudantes de Informática de Gestão, unidos pela vontade de revolucionar o acesso a eventos. O projeto <span className="font-bold text-black">QuickPass</span> nasceu para eliminar burocracias, bilhetes de papel perdidos e filas intermináveis, usando tecnologia QR segura e intuitiva.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row justify-center gap-8 sm:gap-16">
             <div className="flex flex-col items-center group">
               <div className="w-28 h-28 rounded-full bg-gray-100 border-4 border-white shadow-lg flex items-center justify-center mb-4 group-hover:-translate-y-2 transition-transform duration-300 overflow-hidden">
@@ -295,7 +280,7 @@ const formatDate = (dateStr) => {
               <p className="font-bold text-gray-900 text-lg">André Barreira</p>
               <p className="text-sm text-gray-500">Co-Fundador</p>
             </div>
-            
+
             <div className="flex flex-col items-center group">
               <div className="w-28 h-28 rounded-full bg-gray-100 border-4 border-white shadow-lg flex items-center justify-center mb-4 group-hover:-translate-y-2 transition-transform duration-300 overflow-hidden">
                 <img src="/img/jose.jpeg" alt="José Fernandes" className="w-full h-full object-cover" />
@@ -357,7 +342,6 @@ const formatDate = (dateStr) => {
         </div>
       </section>
 
-     
       {showReviewModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setShowReviewModal(false)}></div>
@@ -427,7 +411,9 @@ const formatDate = (dateStr) => {
           </div>
         </div>
       )}
-        <Footer />
+
+      <Footer />
+
       {showContactModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setShowContactModal(false)}></div>

@@ -38,6 +38,8 @@ export default function Navbar() {
     localStorage.removeItem("token");
     localStorage.removeItem("userName");
     localStorage.removeItem("userFoto");
+    localStorage.removeItem("userId");
+    window.dispatchEvent(new Event("userChanged")); // limpa o carrinho no contexto
     navigate("/");
   };
 
