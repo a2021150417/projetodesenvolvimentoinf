@@ -9,7 +9,7 @@ const transporter = nodemailer.createTransport({
 });
 
 async function enviarBilhete({ para, nome, evento, data, local, codigoQR, preco }) {
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(codigoQR)}`;
+  const qrUrl = `://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(codigoQR)}`;
   await transporter.sendMail({
     from: `"QuickPass" <${process.env.EMAIL_USER}>`,
     to: para,
@@ -41,7 +41,7 @@ async function enviarBilhete({ para, nome, evento, data, local, codigoQR, preco 
 }
 
 async function enviarRecuperacaoPassword({ para, nome, token }) {
-  const link = `https://192.168.232.76:5173/reset-password/${token}`;
+  const link = `https://localhost:5173/reset-password/${token}`;
   await transporter.sendMail({
     from: `"QuickPass" <${process.env.EMAIL_USER}>`,
     to: para,
