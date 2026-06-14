@@ -12,6 +12,10 @@ export default function ResetPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErro('');
+    if (password.length < 8) {
+      setErro("A palavra-passe deve ter pelo menos 8 caracteres.");
+      return;
+    }
     if (password !== confirmar) {
       setErro('As palavras-passe não coincidem.');
       return;
@@ -57,7 +61,7 @@ export default function ResetPassword() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full p-4 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-300"
-              placeholder="Nova palavra-passe"
+              placeholder="Nova palavra-passe (mín. 8 caracteres)"
             />
           </div>
           <div>
