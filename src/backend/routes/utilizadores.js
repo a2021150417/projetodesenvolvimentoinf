@@ -90,7 +90,80 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// POST /api/utilizadores/recuperar-password
+router.post("/recuperar-password", async (req, res) => {
+  try {
+    const { email } = req.body;
 
+    // 1. Verificar se o email existe
+    const userExiste = await pool.query("SELECT * FROM Utilizador WHERE email = $1", [email]);
+
+    if (userExiste.rows.length === 0) {
+      return res.status(200).json({ mensagem: "Se o email existir, receberá um link." });
+    }
+
+    // 2. Gerar o token único
+    const tokenRecuperacao = crypto.randomBytes(32).toString("hex");
+    
+    // 3. Definir a validade do token (ex: 1 hora a partir de agora)
+    const dataExpiracao = new Date();
+    dataExpiracao.setHours(dataExpiracao.getHours() + 1);
+
+    // 4. AGORA SIM: Guardar na base de dados nas tuas colunas!
+    await pool.query(
+      "UPDATE Utilizador SET reset_token = $1, reset_token_expira = $2 WHERE email = $3",
+      [tokenRecuperacao, dataExpiracao, email]
+    );
+
+    
+    // 5. Enviar o email (agora a passar os dados como um objeto, exatamente como o email.js pede!)
+    await enviarRecuperacaoPassword({ 
+      para: email, 
+      nome: userExiste.rows[0].nome, 
+      token: tokenRecuperacao 
+    });
+
+    res.status(200).json({ mensagem: "Se o email existir, receberá um link." });
+
+  } catch (err) {
+    console.error("Erro na recuperação de password:", err.message);
+    res.status(500).json({ erro: "Erro interno do servidor ao processar o pedido." });
+  }
+});
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, novaPassword } = req.body;
+
+    // 1. Procurar o utilizador com este token e garantir que não expirou (> NOW())
+    const userResult = await pool.query(
+      "SELECT * FROM Utilizador WHERE reset_token = $1 AND reset_token_expira > NOW()",
+      [token]
+    );
+
+    // Se não encontrar, ou o token é inválido ou já passou 1 hora
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({ erro: "O link é inválido ou já expirou. Pede um novo link." });
+    }
+
+    const utilizador = userResult.rows[0];
+
+    // 2. Encriptar a nova palavra-passe de forma segura
+    const salt = await bcrypt.genSalt(10);
+    const hashPassword = await bcrypt.hash(novaPassword, salt);
+
+    // 3. Atualizar a password e limpar as colunas do token (para não ser usado 2 vezes)
+    await pool.query(
+      "UPDATE Utilizador SET password = $1, reset_token = NULL, reset_token_expira = NULL WHERE id_utilizador = $2",
+      [hashPassword, utilizador.id_utilizador]
+    );
+
+    res.status(200).json({ mensagem: "Palavra-passe alterada com sucesso!" });
+
+  } catch (err) {
+    console.error("Erro ao fazer reset da password:", err.message);
+    res.status(500).json({ erro: "Erro interno do servidor." });
+  }
+});
 router.get("/:id/stats", async (req, res) => {
   try {
     const { id } = req.params;
