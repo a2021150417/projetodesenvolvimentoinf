@@ -19,4 +19,4 @@ entrar na pasta src e correr o comando npm install
 
 entrar na pasta backend e correr o comando npm install
 
-fiz alterações na base de dados por isso tem de correr o novo ficheiro sql
+Adicionei uma coluna na base de dados por isso tem de voltar a correr o ficheiro sql
