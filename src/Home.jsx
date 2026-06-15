@@ -52,7 +52,7 @@ export default function Home() {
 
   // NOVO EFFECT (Home_2.jsx): Carrega os eventos reais e mapeia o subtitulo dinâmico
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/api/eventos`)
+    fetch(`${import.meta.env.VITE_API_URL}/api/eventos/destaques`)
       .then((r) => r.json())
       .then((dados) => {
         if (Array.isArray(dados)) {
@@ -66,7 +66,8 @@ export default function Home() {
             image: e.foto_evento,
             local: e.local_evento
           }));
-          setEventosDestaque(mapeados.slice(0, 4)); // Pega em até 4 eventos dinâmicos
+          setEventosDestaque(mapeados.slice(0, 4)); 
+          
         }
       })
       .catch((err) => console.error("Erro ao carregar destaques na Home:", err));

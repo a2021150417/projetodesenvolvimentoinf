@@ -9,7 +9,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 export async function listarEventos(search = "") {
   const url = search && search.trim() !== ""
     ? `${API_URL}/api/eventos?search=${encodeURIComponent(search.trim())}`
-    : `${API_URL}/api/eventos`;
+    : `${API_URL}/api/eventos/`;
   const r = await fetch(url);
   if (!r.ok) throw new Error((await r.json()).erro || "Erro ao listar eventos");
   return r.json();
@@ -169,7 +169,7 @@ export default function Eventos() {
           id: e.id_evento,
           title: e.titulo,
           description: e.descricao || "",
-          shortDescription: e.subtitulo || "Sem descrição disponível.", // CORRIGIDO: Mapeado para o novo campo da base de dados
+          shortDescription: e.subtitulo || "Sem descrição disponível.", 
           date: e.data_hora,
           price: Number(e.preco),
           category: e.categoria,
