@@ -13,12 +13,13 @@ router.get("/", async (req, res) => {
          WHERE titulo ILIKE $1 
             OR categoria ILIKE $1 
             OR distrito ILIKE $1
-         ORDER BY data_hora ASC`,
+            AND data_hora > CURRENT_TIMESTAMP 
+          ` , 
         [`%${search.trim()}%`]
       );
     } else {
       resultado = await pool.query(
-        "SELECT * FROM Eventos ORDER BY data_hora ASC"
+        "SELECT * FROM Eventos WHERE data_hora > CURRENT_TIMESTAMP   "
       );
     }
     res.json(resultado.rows);
@@ -27,12 +28,29 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.get("/destaques", async (req, res) => {
+  try {
+
+    const resultado = await pool.query(
+      `SELECT * FROM Eventos 
+       WHERE data_hora > CURRENT_TIMESTAMP 
+       ORDER BY RANDOM() 
+       LIMIT 4`
+    );
+    
+    res.json(resultado.rows);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+
 // 2. BUSCAR UM EVENTO POR ID
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const resultado = await pool.query(
-      "SELECT * FROM Eventos WHERE id_evento = $1",
+      "SELECT * FROM Eventos WHERE id_evento = $1 AND data_hora > CURRENT_TIMESTAMP" ,
       [id]
     );
     if (resultado.rows.length === 0) {
